@@ -29,13 +29,17 @@ st.markdown("""
         border-radius: 15px;
         border-left: 5px solid #00cfcc;
     }
+    .logo-container {
+        text-align: center;
+        margin-bottom: 20px;
+    }
     .logo-text {
         text-align: center;
         font-weight: bold;
         color: white;
         font-size: 24px;
         letter-spacing: 2px;
-        margin-top: -10px;
+        margin-top: 5px;
         margin-bottom: 5px;
     }
     .sub-logo {
@@ -49,7 +53,20 @@ st.markdown("""
 
 DATA_FILE = "gastos_dados.json"
 LIMITE_DINHEIRO_SEMANAL = 500.00
-TURMAS = [f"Turma {i}" for i in range(1, 7)]
+
+# --- USUÁRIOS E SENHAS (Pode alterar as senhas aqui se quiser) ---
+CREDENCIAIS = {
+    "Rafael": "raf123",
+    "Ednaldo": "edn123",
+    "Luiz Felipe": "luiz123",
+    "Carlos": "car123",
+    "Cardoso": "card123",
+    "Guilherme": "gui123",
+    "Paulo": "pau123",
+    "ADM": "adm9988"
+}
+
+TURMAS = [nome for nome in CREDENCIAIS.keys() if nome != "ADM"]
 
 # --- FUNÇÕES DE ARMAZENAMENTO ISOLADO ---
 def carregar_dados():
@@ -79,31 +96,61 @@ if 'perfil' not in st.session_state:
     st.session_state.perfil = None
 if 'turma' not in st.session_state:
     st.session_state.turma = None
+if 'selecionou_usuario' not in st.session_state:
+    st.session_state.selecionou_usuario = None
 
-# --- DESIGN DA LOGO DIGITAL DA EMPRESA ---
+# --- DESIGN DA LOGO DA EMPRESA ---
 def desenhar_logo():
-    # Renderização da logo em formato adaptado para web/mobile
-    st.markdown("<h1 style='text-align: center; color: #00cfcc; margin-bottom: 0px;'>💧</h1>", unsafe_allow_html=True)
+    st.markdown("<div class='logo-container'>", unsafe_allow_html=True)
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=120)
+    else:
+        st.markdown("<h1 style='text-align: center; color: #00cfcc; margin-bottom: 0px;'>💧</h1>", unsafe_allow_html=True)
     st.markdown("<div class='logo-text'>MENDONÇA POÇOS</div>", unsafe_allow_html=True)
     st.markdown("<div class='sub-logo'>======= GESTÃO CORPORATIVA =======</div>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # --- TELA DE LOGIN / SELEÇÃO DE EQUIPE ---
 if st.session_state.perfil is None:
     desenhar_logo()
-    st.write("Selecione seu perfil para acessar o painel:")
     
-    col1, col2 = st.columns(2)
-    for idx, t in enumerate(TURMAS):
-        c = col1 if idx % 2 == 0 else col2
-        if c.button(t):
-            st.session_state.perfil = "TURMA"
-            st.session_state.turma = t
+    if st.session_state.selecionou_usuario is None:
+        st.write("Selecione seu perfil para acessar o painel:")
+        
+        col1, col2 = st.columns(2)
+        for idx, t in enumerate(TURMAS):
+            c = col1 if idx % 2 == 0 else col2
+            if c.button(t):
+                st.session_state.selecionou_usuario = t
+                st.rerun()
+                
+        st.divider()
+        if st.button("🔑 ACESSO ADMINISTRADOR (ADM)", type="secondary"):
+            st.session_state.selecionou_usuario = "ADM"
             st.rerun()
             
-    st.divider()
-    if st.button("🔑 ACESSO ADMINISTRADOR (ADM)", type="secondary"):
-        st.session_state.perfil = "ADM"
-        st.rerun()
+    else:
+        user = st.session_state.selecionou_usuario
+        st.write(f"Digite a senha de acesso para: **{user}**")
+        
+        senha_digitada = st.text_input("Senha", type="password")
+        
+        c_voltar, c_entrar = st.columns(2)
+        if c_voltar.button("Voltar"):
+            st.session_state.selecionou_usuario = None
+            st.rerun()
+            
+        if c_entrar.button("Entrar"):
+            if senha_digitada == CREDENCIAIS[user]:
+                if user == "ADM":
+                    st.session_state.perfil = "ADM"
+                else:
+                    st.session_state.perfil = "TURMA"
+                    st.session_state.turma = user
+                st.session_state.selecionou_usuario = None
+                st.rerun()
+            else:
+                st.error("Senha incorreta! Tente novamente.")
 
 # --- INTERFACE PRINCIPAL OPERACIONAL ---
 else:
@@ -130,7 +177,7 @@ else:
     # --- ABA 1: REGISTRO DE GASTOS SEMANAIS ---
     with aba1:
         if st.session_state.perfil == "ADM":
-            st.warning("O perfil Administrador serve apenas para monitoramento corporativo. Faça login como uma das Turmas para registrar gastos.")
+            st.warning("O perfil Administrador serve apenas para monitoramento corporativo. Faça login com o seu nome para registrar seus gastos.")
         else:
             t_ativa = st.session_state.turma
             trans_semana = st.session_state.dados[t_ativa]["transacoes"]
@@ -198,7 +245,7 @@ else:
         # Seleção de escopo para o ADM poder auditar equipes individualmente
         target_turma = st.session_state.turma
         if st.session_state.perfil == "ADM":
-            target_turma = st.selectbox("Selecione a frente para conferência", TURMAS)
+            target_turma = st.selectbox("Selecione o colaborador para conferência", TURMAS)
             
         historico_alvo = st.session_state.dados[target_turma]["historico"]
         meses_disponiveis = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in historico_alvo)), reverse=True)
@@ -223,11 +270,11 @@ else:
     if st.session_state.perfil == "ADM":
         with aba3[0]:
             st.subheader("🚨 Ferramentas de Gestão Central")
-            st.write("Esta ação zera instantaneamente o balanço e as barras semanais das 6 equipes em campo, preservando os históricos arquivados.")
+            st.write("Esta ação zera instantaneamente o balanço e as barras semanais de todos os colaboradores, preservando os históricos arquivados.")
             
-            if st.button("RESETAR SEMANA DE TODAS AS TURMAS"):
+            if st.button("RESETAR SEMANA DE TODOS"):
                 for t in TURMAS:
                     st.session_state.dados[t]["transacoes"] = []
                 salvar_dados(st.session_state.dados)
-                st.success("🚨 O balanço e as barras da semana de todas as equipes foram limpos com sucesso!")
+                st.success("🚨 O balanço e as barras da semana de todos os colaboradores foram limpos com sucesso!")
                 st.rerun()
