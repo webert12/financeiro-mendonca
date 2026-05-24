@@ -77,15 +77,27 @@ aba_inserir, aba_historico, aba_config = st.tabs(["📝 Registrar Gasto", "📅 
 # 2. Fluxo de inserção de novos gastos
 with aba_inserir:
     st.markdown("### Lançar Nova Despesa")
-    with st.form("form_gasto", clear_on_submit=True):
-        categorias = ["Café da Manhã", "Almoço", "Café da Tarde", "Jantar", "Pedágio / Transporte", "Outros"]
-        categoria_escolhida = st.selectbox("Selecione o que foi gasto:", categorias)
+    
+    categorias = ["Café da Manhã", "Almoço", "Café da Tarde", "Jantar", "Outros"]
+    categoria_escolhida = st.selectbox("Selecione o que foi gasto:", categorias)
+    
+    # Sistema dinâmico para a categoria "Outros"
+    subcategoria_final = categoria_escolhida
+    if categoria_escolhida == "Outros":
+        sub_opcoes = ["Pedágio", "Transportes", "Mecânica", "Lojas (Loja de Construção)"]
+        sub_escolha = st.selectbox("Especifique o gasto de 'Outros':", sub_opcoes)
         
-        opcao_pgto = st.radio("Qual foi o método de pagamento?", ["Dinheiro em Espécie", "Cartão de Crédito"], horizontal=True)
-        metodo = "Dinheiro" if opcao_pgto == "Dinheiro em Espécie" else "Cartão"
-        
-        valor = st.number_input("Valor gasto R$", min_value=0.0, step=1.0, format="%.2f")
-        botao_salvar = st.form_submit_button("SALVAR LANÇAMENTO")
+        if sub_escolha == "Lojas (Loja de Construção)":
+            subcategoria_final = "Loja de Construção"
+        else:
+            subcategoria_final = sub_escolha
+            
+    opcao_pgto = st.radio("Qual foi o método de pagamento?", ["Dinheiro em Espécie", "Cartão de Crédito"], horizontal=True)
+    metodo = "Dinheiro" if opcao_pgto == "Dinheiro em Espécie" else "Cartão"
+    
+    valor = st.number_input("Valor gasto R$", min_value=0.0, step=1.0, format="%.2f")
+    
+    botao_salvar = st.button("SALVAR LANÇAMENTO", type="primary")
 
     if botao_salvar:
         if valor > 0:
@@ -94,7 +106,7 @@ with aba_inserir:
                 "data": agora.strftime("%d/%m %H:%M"),
                 "ano_mes": agora.strftime("%Y-%m"),
                 "semana_ano": agora.strftime("%U"),
-                "categoria": categoria_escolhida,
+                "categoria": subcategoria_final,
                 "metodo": metodo,
                 "valor": valor
             }
@@ -102,11 +114,12 @@ with aba_inserir:
             dados["transacoes"].append(nova_transacao)
             dados["historico"].append(nova_transacao)
             salvar_dados(dados)
-            st.success("✓ Gasto registrado com sucesso de forma permanente!")
+            st.success(f"✓ Gasto registrado em '{subcategoria_final}' com sucesso!")
             st.rerun()
         else:
             st.error("Por favor, digite um valor maior que zero.")
 
+    st.divider()
     # Tabela de Histórico Recente da Semana Ativa
     st.markdown("#### Gastos da Semana Atual")
     if dados["transacoes"]:
@@ -117,7 +130,7 @@ with aba_inserir:
     else:
         st.info("Nenhum lançamento registrado nesta semana.")
 
-# 3. Exibe os meses disponíveis e filtra os dados salvos permanentemente
+# 3. Exibe os meses disponíveis e filtra após pressionar o botão
 with aba_historico:
     st.markdown("### Arquivo de Transações")
     if not dados["historico"]:
@@ -132,26 +145,31 @@ with aba_historico:
             
         mes_selecionado_formatado = st.selectbox("Selecione o mês para consulta:", opcoes_formatadas)
         
-        # Converte de volta "05/2026" para "2026-05" para filtrar o JSON
-        mes_num_sel, ano_sel = mes_selecionado_formatado.split("/")
-        mes_escolhido = f"{ano_sel}-{mes_num_sel}"
+        # Botão de ativação do relatório solicitado
+        visualizar_relatorio = st.button("Visualizar Relatório", type="secondary")
         
-        transacoes_mes = [t for t in dados["historico"] if t.get("ano_mes", "") == mes_escolhido]
-        
-        total_din_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Dinheiro")
-        total_card_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Cartão")
-        
-        st.markdown(f"**💵 Total em Dinheiro:** R$ {total_din_mes:.2f}")
-        st.markdown(f"**💳 Total no Cartão:** R$ {total_card_mes:.2f}")
-        st.divider()
-        
-        for t in reversed(transacoes_mes):
-            emoji = "💳" if t.get("metodo") == "Cartão" else "💵"
-            st.markdown(f"**{t['data']}** - {emoji} {t['categoria']} - R$ {t['valor']:.2f}")
+        if visualizar_relatorio:
+            # Converte de volta "05/2026" para "2026-05" para filtrar o JSON
+            mes_num_sel, ano_sel = mes_selecionado_formatado.split("/")
+            mes_escolhido = f"{ano_sel}-{mes_num_sel}"
+            
+            transacoes_mes = [t for t in dados["historico"] if t.get("ano_mes", "") == mes_escolhido]
+            
+            total_din_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Dinheiro")
+            total_card_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Cartão")
+            
+            st.markdown(f"### 📊 Relatório de {mes_selecionado_formatado}")
+            st.markdown(f"**💵 Total em Dinheiro:** R$ {total_din_mes:.2f}")
+            st.markdown(f"**💳 Total no Cartão:** R$ {total_card_mes:.2f}")
+            st.divider()
+            
+            for t in reversed(transacoes_mes):
+                emoji = "💳" if t.get("metodo") == "Cartão" else "💵"
+                st.markdown(f"**{t['data']}** - {emoji} {t['categoria']} - R$ {t['valor']:.2f}")
 
 # 4. Ajustes e Viradas de folha
 with aba_config:
-    st.markdown("### Administração do Sistema")
+    st.markdown("### Administration do Sistema")
     st.warning("Atenção: A ação abaixo limpa o painel da semana ativa, mas mantém o histórico mensal salvo.")
     if st.button("🚨 Resetar Balanço Semanal (Zerar Barras)", type="primary"):
         dados["transacoes"] = []
