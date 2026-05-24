@@ -30,7 +30,7 @@ st.markdown("""
         border-left: 5px solid #00cfcc;
     }
     </style>
-    """, unsafe_allow_stdio=True)
+    """, unsafe_allow_html=True)
 
 DATA_FILE = "gastos_dados.json"
 LIMITE_SEMANAL = 500.00
@@ -92,7 +92,7 @@ else:
             st.session_state.turma = None
             st.rerun()
 
-    # Logica de Abas (Navegação APK)
+    # Lógica de Abas (Navegação APK)
     menu = ["Registrar", "Relatórios"]
     if st.session_state.perfil == "ADM":
         menu.append("Gestão ADM")
@@ -106,7 +106,7 @@ else:
         else:
             st.subheader("📝 Novo Lançamento")
             
-            # Calculos
+            # Cálculos
             t_nome = st.session_state.turma
             trans_semana = st.session_state.dados[t_nome]["transacoes"]
             gasto_din = sum(t["valor"] for t in trans_semana if t["metodo"] == "Dinheiro")
@@ -119,16 +119,15 @@ else:
             
             st.progress(min(gasto_din/LIMITE_SEMANAL, 1.0))
             
-            # Formulario
+            # Formulário
             with st.form("registro_gasto", clear_on_submit=True):
                 cat = st.selectbox("Categoria", ["Café da Manhã", "Almoço", "Café da Tarde", "Jantar", "Pedágio", "Outros"])
                 met = st.radio("Pagamento", ["💵 Dinheiro", "💳 Cartão"], horizontal=True)
                 val = st.text_input("Valor (Ex: 25,50)")
                 
-                if st.form_submit_state: # No streamlit forms, o botão envia
-                    pass 
+                botao_salvar = st.form_submit_button("SALVAR GASTO")
 
-                if st.form_submit_button("SALVAR GASTO"):
+                if botao_salvar:
                     try:
                         v = float(val.replace(",", "."))
                         metodo_limpo = "Dinheiro" if "Dinheiro" in met else "Cartão"
@@ -145,14 +144,14 @@ else:
                         st.session_state.dados[t_nome]["transacoes"].append(novo)
                         st.session_state.dados[t_nome]["historico"].append(novo)
                         salvar_dados(st.session_state.dados)
-                        st.success("Salvo!")
+                        st.success("Salvo com sucesso!")
                         st.rerun()
                     except:
-                        st.error("Valor inválido")
+                        st.error("Valor inválido. Digite apenas números.")
 
-            st.write("**Últimos 3 gastos da semana:**")
+            st.write("**Últimos gastos da semana:**")
             for t in reversed(trans_semana[-3:]):
-                st.caption(f"{t['data']} - {t['categoria']} - R$ {t['valor']:.2f}")
+                st.caption(f"{t['data']} - {t['categoria']} - R$ {t['valor']:.2f} ({t['metodo']})")
 
     # --- ABA: RELATÓRIOS ---
     with aba2:
@@ -177,18 +176,17 @@ else:
             for t in reversed(dados_mes):
                 st.markdown(f"**{t['data']}** - {t['categoria']} - `R$ {t['valor']:.2f}`")
         else:
-            st.write("Sem registros.")
+            st.write("Nenhum registro encontrado para esta turma.")
 
     # --- ABA: GESTÃO ADM ---
     if st.session_state.perfil == "ADM":
         with aba3[0]:
             st.subheader("⚙️ Painel de Controle")
-            st.write("Ação para todas as 6 turmas:")
+            st.write("Ação global para todas as 6 turmas:")
             
             if st.button("🚨 RESETAR SEMANA (TODAS AS TURMAS)"):
                 for t in TURMAS:
                     st.session_state.dados[t]["transacoes"] = []
                 salvar_dados(st.session_state.dados)
-                st.success("Barras zeradas para todas as equipes!")
+                st.success("Barras zeradas e limpas para todas as equipes!")
                 st.rerun()
-        
