@@ -5,7 +5,7 @@ from datetime import datetime
 
 DATA_FILE = "gastos_dados.json"
 LIMITE_PADRAO_SEMANAL = 500.00
-TURMAS_DISPONIVEIS = ["Turma Rafael", "Turma Ednaldo", "Turma Carlos", "Turma L. Felipe", "Turma Cardoso", " Manutenção"]
+TURMAS_DISPONIVEIS = ["Turma Rafael", "Turma Ednaldo", "Turma Carlos", "Turma L. Felipe", "Turma Cardoso", "Turma Manutenção"]
 
 def inicializar_estrutura():
     """Garante que cada turma tenha seu espaço 100% individual e limpo no arquivo"""
