@@ -56,14 +56,14 @@ LIMITE_DINHEIRO_SEMANAL = 500.00
 
 # --- USUÁRIOS E SENHAS (Pode alterar as senhas aqui se quiser) ---
 CREDENCIAIS = {
-    "Rafael": "raf123",
-    "Ednaldo": "edn123",
-    "Luiz Felipe": "luiz123",
-    "Carlos": "car123",
-    "Cardoso": "card123",
-    "Guilherme": "gui123",
-    "Paulo": "pau123",
-    "ADM": "adm9988"
+    "Rafael": "0000",
+    "Ednaldo": "1111",
+    "Luiz Felipe": "2222",
+    "Carlos": "3333",
+    "Cardoso": "4444",
+    "Guilherme": "5555",
+    "Paulo": "6666",
+    "ADM": "7777"
 }
 
 TURMAS = [nome for nome in CREDENCIAIS.keys() if nome != "ADM"]
