@@ -1,345 +1,230 @@
-import flet as ft
 import json
 import os
 from datetime import datetime
+from rich.console import Console
+from rich.table import Table
 
+console = Console()
 DATA_FILE = "gastos_dados.json"
-LIMITE_PADRAO_SEMANAL = 500.00
-TURMAS_DISPONIVEIS = ["Turma 1", "Turma 2", "Turma 3", "Turma 4", "Turma 5", "Turma 6"]
+LIMITE_DINHEIRO_SEMANAL = 500.00
 
-def inicializar_estrutura():
-    """Garante que cada turma tenha seu espaço 100% individual e limpo no arquivo"""
-    dados = {}
-    for turma in TURMAS_DISPONIVEIS:
-        dados[turma] = {
-            "transacoes": [],
-            "historico": []
-        }
-    return dados
-
+# 1. Inicializa ou carrega os dados salvos estruturando o histórico permanente
 def carregar_dados():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             try:
                 dados = json.load(f)
-                # Se o arquivo antigo for uma lista ou formato antigo, limpa e cria a nova estrutura
-                if "transacoes" in dados or isinstance(dados, list):
-                    dados = inicializar_estrutura()
-                # Garante que novas turmas ou chaves estejam presentes
-                for turma in TURMAS_DISPONIVEIS:
-                    if turma not in dados:
-                        dados[turma] = {"transacoes": [], "historico": []}
+                
+                # Migração/Adaptação caso o JSON antigo seja uma lista simples ou formato anterior
+                if isinstance(dados, list):
+                    dados = {"transacoes": dados, "historico": []}
+                if "transacoes" not in dados:
+                    dados["transacoes"] = []
+                if "historico" not in dados:
+                    dados["historico"] = []
+                    
                 return dados
-            except:
-                return inicializar_estrutura()
-    return inicializar_estrutura()
+            except json.JSONDecodeError:
+                return {"transacoes": [], "historico": []}
+    return {"transacoes": [], "historico": []}
 
 def salvar_dados(dados):
     with open(DATA_FILE, "w") as f:
         json.dump(dados, f, indent=4)
 
-def main(page: ft.Page):
-    page.title = "Mendonça Poços Finanças"
-    page.theme_mode = ft.ThemeMode.DARK
-    page.scroll = ft.ScrollMode.AUTO
+# Função auxiliar para desenhar barras de progresso em texto
+def gerar_barra(valor_atual, valor_maximo, tamanho_barra=20):
+    if valor_maximo <= 0:
+        return "□" * tamanho_barra, 0
+    porcentagem = min(int((valor_atual / valor_maximo) * 100), 100)
+    preenchido = int((porcentagem / 100) * tamanho_barra)
+    barra = "■" * preenchido + "□" * (tamanho_barra - preenchido)
+    return barra, porcentagem
 
-    dados_globais = carregar_dados()
+# 2. Renderiza o Painel Visual com as barras por método de pagamento
+def exibir_painel(dados):
+    os.system("clear")
+    console.print("[bold green]══ CONTROLADOR FINANCEIRO CORPORATIVO ══[/bold green]\n")
     
-    # Variáveis de controle de sessão
-    usuario_atual = {"perfil": None, "turma_selecionada": None}
-
-    # --- COMPONENTES DE INTERFACE GLOBAIS ---
-    txt_dinheiro = ft.Text("R$ 0.00", size=24, weight=ft.FontWeight.BOLD)
-    txt_restante = ft.Text("Restante: R$ 500.00", size=12, color=ft.colors.GREEN)
-    txt_cartao = ft.Text("R$ 0.00", size=24, weight=ft.FontWeight.BOLD, color=ft.colors.PINK)
-    progresso = ft.ProgressBar(value=0.0, bgcolor=ft.colors.SURFACE_VARIANT, color=ft.colors.CYAN)
-    lista_semana = ft.ListView(expand=True, spacing=10, padding=10)
+    # Separação e soma dos gastos da semana atual
+    total_dinheiro = sum(t["valor"] for t in dados["transacoes"] if t.get("metodo", "Dinheiro") == "Dinheiro")
+    total_cartao = sum(t["valor"] for t in dados["transacoes"] if t.get("metodo", "Dinheiro") == "Cartão")
+    restante_dinheiro = LIMITE_DINHEIRO_SEMANAL - total_dinheiro
     
-    drop_categoria = ft.Dropdown(
-        label="Selecione o Gasto",
-        options=[
-            ft.dropdown.Option("Café da Manhã"),
-            ft.dropdown.Option("Almoço"),
-            ft.dropdown.Option("Café da Tarde"),
-            ft.dropdown.Option("Jantar"),
-            ft.dropdown.Option("Outros"),
-        ],
-        on_change=lambda e: mudar_categoria(e)
-    )
-
-    drop_outros = ft.Dropdown(
-        label="Especifique 'Outros'",
-        visible=False,
-        options=[
-            ft.dropdown.Option("Pedágio"),
-            ft.dropdown.Option("Transportes"),
-            ft.dropdown.Option("Mecânica"),
-            ft.dropdown.Option("Lojas (Loja de Construção)"),
-        ]
-    )
-
-    def mudar_categoria(e):
-        drop_outros.visible = (drop_categoria.value == "Outros")
-        page.update()
-
-    radio_pagamento = ft.RadioGroup(content=ft.Row([
-        ft.Radio(value="Dinheiro", label="💵 Dinheiro"),
-        ft.Radio(value="Cartão", label="💳 Cartão")
-    ]))
-
-    txt_valor = ft.TextField(label="Valor gasto R$", keyboard_type=ft.KeyboardType.NUMBER)
-
-    # --- HISTÓRICO MENSAL ---
-    drop_adm_turma_filtro = ft.Dropdown(label="Filtrar por Turma (ADM)", options=[ft.dropdown.Option(t) for t in TURMAS_DISPONIVEIS], visible=False)
-    drop_meses = ft.Dropdown(label="Selecione o Mês")
-    txt_resumo_mes = ft.Text("", size=14, weight=ft.FontWeight.BOLD)
-    lista_mes = ft.ListView(expand=True, spacing=5)
-
-    # --- ATUALIZAR VALORES NA TELA ---
-    def atualizar_valores():
-        turma = usuario_atual["turma_selecionada"]
+    # --- VISUALIZAÇÃO DO DINHEIRO EM ESPÉCIE ---
+    barra_din, pct_din = gerar_barra(total_dinheiro, LIMITE_DINHEIRO_SEMANAL)
+    console.print(f"[bold cyan]💵 Dinheiro em Espécie (Limite: R$ {LIMITE_DINHEIRO_SEMANAL:.2f})[/bold cyan]")
+    console.print(f"[{barra_din}] {pct_din}% consumido")
+    console.print(f"Gasto: [bold red]R$ {total_dinheiro:.2f}[/bold red] | Restante: [bold green]R$ {restante_dinheiro:.2f}[/bold green]\n")
+    
+    # --- VISUALIZAÇÃO DO CARTÃO CORPORATIVO ---
+    barra_card, _ = gerar_barra(total_cartao, max(total_cartao, 500.00))
+    console.print(f"[bold magenta]💳 Cartão Corporativo (Fluxo Acumulado)[/bold magenta]")
+    console.print(f"[{barra_card}] Acumulando...")
+    console.print(f"Total Gasto no Cartão: [bold yellow]R$ {total_cartao:.2f}[/bold yellow]\n")
+    
+    console.print("[gray]--------------------------------------------------[/gray]")
+    
+    # Tabela de Histórico Recente da Semana Ativa
+    table = Table(title="Gastos da Semana Atual", expand=True)
+    table.add_column("Data", style="cyan", width=12)
+    table.add_column("Descrição do Lançamento", style="white")
+    table.add_column("Valor", justify="right", style="green", width=12)
+    
+    ultimas_transacoes = dados["transacoes"][-6:]
+    for t in ultimas_transacoes:
+        metodo = t.get("metodo", "Dinheiro")
         
-        if usuario_atual["perfil"] == "ADM" and not turma:
-            total_din = sum(sum(t["valor"] for t in dados_globais[tr]["transacoes"] if t.get("metodo") == "Dinheiro") for tr in TURMAS_DISPONIVEIS)
-            total_car = sum(sum(t["valor"] for t in dados_globais[tr]["transacoes"] if t.get("metodo") == "Cartão") for tr in TURMAS_DISPONIVEIS)
-            restante = (LIMITE_PADRAO_SEMANAL * len(TURMAS_DISPONIVEIS)) - total_din
-            limite_total = LIMITE_PADRAO_SEMANAL * len(TURMAS_DISPONIVEIS)
+        if metodo == "Cartão":
+            descricao_formatada = f"{t['categoria']}, [magenta]pago com Cartão[/magenta]"
         else:
-            alvo = turma if turma else TURMAS_DISPONIVEIS[0]
-            total_din = sum(t["valor"] for t in dados_globais[alvo]["transacoes"] if t.get("metodo") == "Dinheiro")
-            total_car = sum(t["valor"] for t in dados_globais[alvo]["transacoes"] if t.get("metodo") == "Cartão")
-            restante = LIMITE_PADRAO_SEMANAL - total_din
-            limite_total = LIMITE_PADRAO_SEMANAL
-
-        txt_dinheiro.value = f"R$ {total_din:.2f}"
-        txt_restante.value = f"Restante: R$ {restante:.2f}"
-        txt_cartao.value = f"R$ {total_car:.2f}"
-        progresso.value = min(total_din / limite_total, 1.0) if limite_total > 0 else 0
-
-        # Atualiza os gastos recentes
-        lista_semana.controls.clear()
-        transacoes_exibir = []
-        
-        if usuario_atual["perfil"] == "ADM":
-            for tr in TURMAS_DISPONIVEIS:
-                for t in dados_globais[tr]["transacoes"]:
-                    t_copia = t.copy()
-                    t_copia["origem"] = tr
-                    transacoes_exibir.append(t_copia)
-        else:
-            for t in dados_globais[turma]["transacoes"]:
-                t_copia = t.copy()
-                t_copia["origem"] = turma
-                transacoes_exibir.append(t_copia)
-
-        for t in reversed(transacoes_exibir[-10:]):
-            emoji = "💳" if t.get("metodo") == "Cartão" else "💵"
-            cor = ft.colors.PINK if t.get("metodo") == "Cartão" else ft.colors.CYAN
-            tag_turma = f"[{t['origem']}] " if usuario_atual["perfil"] == "ADM" else ""
-            lista_semana.controls.append(
-                ft.ListTile(
-                    leading=ft.Text(emoji, size=20),
-                    title=ft.Text(f"{tag_turma}{t['categoria']} - R$ {t['valor']:.2f}"),
-                    subtitle=ft.Text(f"{t['data']} | {t['metodo']}", color=cor)
-                )
-            )
-        page.update()
-
-    # --- SALVAR NOVO GASTO ---
-    def salvar_gasto(e):
-        if usuario_atual["perfil"] == "ADM":
-            page.overlay.append(ft.SnackBar(ft.Text("Erro: ADM monitora dados, escolha uma Turma para lançar."), open=True))
-            page.update()
-            return
+            descricao_formatada = f"{t['categoria']}, [cyan]pago com Dinheiro[/cyan]"
             
-        try:
-            val = float(txt_valor.value.replace(",", "."))
-            if val <= 0: return
+        table.add_row(t["data"], descricao_formatada, f"R$ {t['valor']:.2f}")
+        
+    console.print(table)
 
-            cat_final = drop_categoria.value
-            if cat_final == "Outros":
-                cat_final = "Loja de Construção" if "Lojas" in drop_outros.value else drop_outros.value
-
-            met = radio_pagamento.value
-            if not met or not cat_final: return
-
-            turma = usuario_atual["turma_selecionada"]
-            agora = datetime.now()
+# 3. Fluxo de inserção de novos gastos
+def adicionar_gasto(dados):
+    console.print("\n[bold yellow]Selecione o que foi gasto:[/bold yellow]")
+    categorias = [
+        "Café da Manhã", 
+        "Almoço", 
+        "Café da Tarde", 
+        "Jantar", 
+        "Pedágio / Transporte", 
+        "Outros"
+    ]
+    
+    for idx, cat in enumerate(categorias, 1):
+        console.print(f"[bold cyan]{idx}.[/bold cyan] {cat}")
+        
+    try:
+        opcao_cat = int(input("\nEscolha o número: "))
+        if not (1 <= opcao_cat <= len(categorias)):
+            raise ValueError
+        categoria_escolhida = categorias[opcao_cat - 1]
+        
+        console.print("\n[bold yellow]Qual foi o método de pagamento?[/bold yellow]")
+        console.print("[bold cyan]1.[/bold cyan] Dinheiro em Espécie")
+        console.print("[bold magenta]2.[/bold magenta] Cartão de Crédito")
+        opcao_pgto = input("\nEscolha a forma (1 ou 2): ")
+        
+        if opcao_pgto == "1":
+            metodo = "Dinheiro"
+        elif opcao_pgto == "2":
+            metodo = "Cartão"
+        else:
+            raise ValueError
             
-            nova_transacao = {
-                "data": agora.strftime("%d/%m %H:%M"),
-                "ano_mes": agora.strftime("%Y-%m"),
-                "categoria": cat_final,
-                "metodo": met,
-                "valor": val
-            }
-
-            # Salvando separadamente dentro da gaveta da turma ativa
-            dados_globais[turma]["transacoes"].append(nova_transacao)
-            dados_globais[turma]["historico"].append(nova_transacao)
-            salvar_dados(dados_globais)
-
-            txt_valor.value = ""
-            drop_categoria.value = None
-            drop_outros.visible = False
-            radio_pagamento.value = None
-
-            atualizar_valores()
-            carregar_meses()
-            page.overlay.append(ft.SnackBar(ft.Text("✓ Gasto registrado!"), open=True))
-        except:
-            pass
-
-    btn_salvar = ft.ElevatedButton("SALVAR LANÇAMENTO", on_click=salvar_gasto, bgcolor=ft.colors.CYAN, color=ft.colors.BLACK)
-
-    # --- FILTRO DE HISTÓRICO ---
-    def carregar_meses():
-        historico_combinado = []
-        if usuario_atual["perfil"] == "ADM":
-            for tr in TURMAS_DISPONIVEIS:
-                historico_combinado.extend(dados_globais[tr]["historico"])
-        else:
-            historico_combinado = dados_globais[usuario_atual["turma_selecionada"]]["historico"]
-
-        if historico_combinado:
-            meses = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in historico_combinado)), reverse=True)
-            drop_meses.options = [ft.dropdown.Option(m) for m in meses]
-        page.update()
-
-    def filtrar_mes(e):
-        mes_sel = drop_meses.value
-        if not mes_sel: return
-
-        transacoes_filtradas = []
+        valor = float(input(f"Valor gasto no {metodo} R$: ").replace(",", "."))
         
-        if usuario_atual["perfil"] == "ADM":
-            turma_filtro = drop_adm_turma_filtro.value
-            if turma_filtro:
-                transacoes_filtradas = [t for t in dados_globais[turma_filtro]["historico"] if t.get("ano_mes", "") == mes_sel]
-            else:
-                for tr in TURMAS_DISPONIVEIS:
-                    for t in dados_globais[tr]["historico"]:
-                        if t.get("ano_mes", "") == mes_sel:
-                            t_c = t.copy()
-                            t_c["categoria"] = f"({tr}) {t_c['categoria']}"
-                            transacoes_filtradas.append(t_c)
-        else:
-            transacoes_filtradas = [t for t in dados_globais[usuario_atual["turma_selecionada"]]["historico"] if t.get("ano_mes", "") == mes_sel]
-
-        tot_din = sum(t["valor"] for t in transacoes_filtradas if t.get("metodo") == "Dinheiro")
-        tot_car = sum(t["valor"] for t in transacoes_filtradas if t.get("metodo") == "Cartão")
-
-        txt_resumo_mes.value = f"💵 Dinheiro: R$ {tot_din:.2f} | 💳 Cartão: R$ {tot_car:.2f}"
-
-        lista_mes.controls.clear()
-        for t in reversed(transacoes_filtradas):
-            lista_mes.controls.append(ft.Text(f"{t['data']} - {t['categoria']} - R$ {t['valor']:.2f}"))
-        page.update()
-
-    btn_filtrar = ft.ElevatedButton("Visualizar Relatório", on_click=filtrar_mes)
-
-    # --- RESET SEMANAL (APENAS ADM) ---
-    def resetar_semana(e):
-        if usuario_atual["perfil"] != "ADM": return
-        for tr in TURMAS_DISPONIVEIS:
-            dados_globais[tr]["transacoes"] = []
-        salvar_dados(dados_globais)
-        atualizar_valores()
-        page.overlay.append(ft.SnackBar(ft.Text("🚨 Semana resetada para todas as turmas!"), open=True))
-
-    btn_reset = ft.ElevatedButton("🚨 Resetar Semana Geral", on_click=resetar_semana, color=ft.colors.WHITE, bgcolor=ft.colors.RED)
-
-    # --- TELA DE ACESSO / LOGIN ---
-    def logar_perfil(perfil, turma=None):
-        usuario_atual["perfil"] = perfil
-        usuario_atual["turma_selecionada"] = turma
+        agora = datetime.now()
+        nova_transacao = {
+            "data": agora.strftime("%d/%m %H:%M"),
+            "ano_mes": agora.strftime("%Y-%m"),   # Ex: "2026-05"
+            "semana_ano": agora.strftime("%U"),
+            "categoria": categoria_escolhida,
+            "metodo": metodo,
+            "valor": valor
+        }
         
-        if perfil == "ADM":
-            aba_conf.visible = True
-            drop_adm_turma_filtro.visible = True
-            btn_reset.visible = True
-            aba_registro.visible = False 
-        else:
-            aba_conf.visible = False
-            drop_adm_turma_filtro.visible = False
-            btn_reset.visible = False
-            aba_registro.visible = True
+        # Se os registros antigos no histórico permanente não tiverem o campo "ano_mes", adicionamos por garantia
+        dados["transacoes"].append(nova_transacao)
+        dados["historico"].append(nova_transacao)
+        
+        salvar_dados(dados)
+        console.print("\n[bold green]✓ Gasto registrado com sucesso de forma permanente![/bold green]")
+    except (ValueError, IndexError):
+        console.print("\n[bold red]Entrada inválida. Operação cancelada.[/bold red]")
+    
+    input("\nPressione Enter para retornar...")
 
-        page.controls.clear()
-        page.add(
-            ft.Row([
-                ft.Text(f"Conectado: {turma if turma else perfil}", size=14, color=ft.colors.CYAN, weight=ft.FontWeight.BOLD),
-                ft.TextButton("Sair", on_click=lambda e: exibir_tela_login())
-            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-            tabs
-        )
-        atualizar_valores()
-        carregar_meses()
-        page.update()
+# 5. Exibe os meses disponíveis e filtra os dados salvos permanentemente
+def exibir_historico_acumulado(dados):
+    os.system("clear")
+    console.print("[bold green]══ HISTÓRICO MENSAL ARQUIVADO ══[/bold green]\n")
+    
+    if not dados["historico"]:
+        console.print("[yellow]Nenhum dado arquivado ainda no histórico permanente.[/yellow]")
+        input("\nPressione Enter para voltar...")
+        return
 
-    def exibir_tela_login():
-        page.controls.clear()
-        botoes_turmas = []
-        for t in TURMAS_DISPONIVEIS:
-            botoes_turmas.append(
-                ft.ElevatedButton(text=t, on_click=lambda e, nome_t=t: logar_perfil("TURMA", nome_t), width=140)
-            )
+    # 1. Coleta todos os meses únicos disponíveis de forma ordenada
+    meses_disponiveis = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in dados["historico"])), reverse=True)
+    
+    console.print("[bold yellow]Selecione o mês para consulta:[/bold yellow]")
+    for idx, mes in enumerate(meses_disponiveis, 1):
+        # Converte "2026-05" para um formato mais legível "05/2026"
+        ano, mes_num = mes.split("-")
+        console.print(f"[bold cyan]{idx}.[/bold cyan] {mes_num}/{ano}")
+        
+    try:
+        escolha = int(input("\nDigite o número do mês desejado: "))
+        if not (1 <= escolha <= len(meses_disponiveis)):
+            raise ValueError
+            
+        mes_escolhido = meses_disponiveis[escolha - 1]
+        ano_exib, mes_exib = mes_escolhido.split("-")
+        
+        # 2. Filtra as transações pertencentes àquele mês escolhido
+        transacoes_mes = [t for t in dados["historico"] if t.get("ano_mes", "") == mes_escolhido]
+        
+        # Somas parciais do mês selecionado
+        total_din_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Dinheiro")
+        total_card_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Cartão")
+        
+        os.system("clear")
+        console.print(f"[bold green]══ RELATÓRIO DE GASTOS: {mes_exib}/{ano_exib} ══[/bold green]\n")
+        console.print(f"💵 Total em Dinheiro: [bold cyan]R$ {total_din_mes:.2f}[/bold cyan]")
+        console.print(f"💳 Total no Cartão:   [bold magenta]R$ {total_card_mes:.2f}[/bold magenta]\n")
+        
+        # Monta a tabela para o mês filtrado
+        table_mes = Table(title=f"Lançamentos Arquivados em {mes_exib}/{ano_exib}", expand=True)
+        table_mes.add_column("Data", style="cyan", width=12)
+        table_mes.add_column("Categoria", style="white")
+        table_mes.add_column("Forma Pgto", style="yellow")
+        table_mes.add_column("Valor", justify="right", style="green")
+        
+        for t in transacoes_mes:
+            metodo = t.get("metodo", "Dinheiro")
+            via_cor = f"[bold magenta]Cartão[/bold magenta]" if metodo == "Cartão" else f"[bold cyan]Dinheiro[/bold cyan]"
+            table_mes.add_row(t["data"], t["categoria"], via_cor, f"R$ {t['valor']:.2f}")
+            
+        console.print(table_mes)
+        
+    except (ValueError, IndexError):
+        console.print("\n[bold red]Opção inválida. Retornando ao menu...[/bold red]")
+        
+    input("\nPressione Enter para voltar ao menu principal...")
 
-        grid_turmas = ft.GridView(
-            expand=False,
-            runs_count=2,
-            max_extent=150,
-            child_aspect_ratio=2.3,
-            spacing=10,
-            run_spacing=10,
-            controls=botoes_turmas
-        )
-
-        page.add(
-            ft.Container(
-                content=ft.Column([
-                    ft.Text("MENDONÇA POÇOS", size=26, weight=ft.FontWeight.BOLD, color=ft.colors.CYAN),
-                    ft.Text("Selecione seu perfil para acessar:", size=13),
-                    ft.Divider(height=15),
-                    grid_turmas,
-                    ft.Divider(height=15),
-                    ft.ElevatedButton("ÁREA DO ADMINISTRADOR (ADM)", on_click=lambda e: logar_perfil("ADM"), bgcolor=ft.colors.SURFACE_VARIANT, color=ft.colors.WHITE, width=300),
-                ], alignment=ft.MainAxisAlignment.CENTER, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                alignment=ft.alignment.center,
-                padding=15
-            )
-        )
-        page.update()
-
-    # --- MONTAGEM DO DESIGN ---
-    card_dinheiro = ft.Container(ft.Column([ft.Text("💵 DINHEIRO", size=11), txt_dinheiro, txt_restante]), bgcolor=ft.colors.SURFACE_VARIANT, padding=12, border_radius=10, expand=True)
-    card_cartao = ft.Container(ft.Column([ft.Text("💳 CARTÃO", size=11), txt_cartao, ft.Text("Acumulado Mês", size=11)]), bgcolor=ft.colors.SURFACE_VARIANT, padding=12, border_radius=10, expand=True)
-
-    aba_registro = ft.Column([
-        ft.Row([card_dinheiro, card_cartao]),
-        progresso,
-        ft.Text("📝 Registrar Novo Gasto", size=15, weight=ft.FontWeight.BOLD),
-        drop_categoria, drop_outros, radio_pagamento, txt_valor, btn_salvar,
-        ft.Divider(),
-        ft.Text("Gastos Recentes Semanais", size=13, weight=ft.FontWeight.BOLD),
-        lista_semana
-    ], spacing=12)
-
-    aba_hist = ft.Column([drop_adm_turma_filtro, drop_meses, btn_filtrar, txt_resumo_mes, ft.Divider(), lista_mes], spacing=12)
-    aba_conf = ft.Column([ft.Text("Controle Central ADM", size=15, weight=ft.FontWeight.BOLD), btn_reset], spacing=12)
-
-    tabs = ft.Tabs(
-        selected_index=0,
-        tabs=[
-            ft.Tab(text="Registrar", content=aba_registro),
-            ft.Tab(text="Histórico", content=aba_hist),
-            ft.Tab(text="Ajustes", content=aba_conf),
-        ],
-        expand=True
-    )
-
-    exibir_tela_login()
+# 4. Loop Principal do Aplicativo
+def main():
+    dados = carregar_dados()
+    while True:
+        exibir_painel(dados)
+        console.print("[bold yellow]Menu Principal:[/bold yellow]")
+        console.print("[bold cyan]1.[/bold cyan] Registrar Novo Gasto")
+        console.print("[bold cyan]2.[/bold cyan] Resetar Balanço Semanal (Limpa barras)")
+        console.print("[bold cyan]3.[/bold cyan] Ver Histórico por Mês")
+        console.print("[bold cyan]4.[/bold cyan] Sair")
+        
+        opcao = input("\nO que deseja fazer? ")
+        
+        if opcao == "1":
+            adicionar_gasto(dados)
+        elif opcao == "2":
+            confirmar = input("Zerar barras da semana atual? O histórico permanente NÃO será apagado (s/n): ")
+            if confirmar.lower() == 's':
+                dados["transacoes"] = [] # Apaga apenas os gastos exibidos na semana atual
+                salvar_dados(dados)
+                console.print("\n[bold green]✓ Balanço da semana resetado com sucesso![/bold green]")
+                input("\nPressione Enter...")
+        elif opcao == "3":
+            exibir_historico_acumulado(dados)
+        elif opcao == "4":
+            console.print("[bold green]Até mais e bom trabalho![/bold green]")
+            break
 
 if __name__ == "__main__":
-    ft.run(target=main, port=8550, view=None, host="0.0.0.0")
-    
+    main()
