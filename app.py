@@ -54,16 +54,16 @@ st.markdown("""
 DATA_FILE = "gastos_dados.json"
 LIMITE_DINHEIRO_SEMANAL = 500.00
 
-# --- USUÁRIOS E SENHAS (Pode alterar as senhas aqui se quiser) ---
+# --- USUÁRIOS E SENHAS ---
 CREDENCIAIS = {
-    "Rafael": "0000",
-    "Ednaldo": "1111",
-    "Luiz Felipe": "2222",
-    "Carlos": "3333",
-    "Cardoso": "4444",
-    "Guilherme": "5555",
-    "Paulo": "6666",
-    "ADM": "7777"
+    "Rafael": "raf123",
+    "Ednaldo": "edn123",
+    "Luiz Felipe": "luiz123",
+    "Carlos": "car123",
+    "Cardoso": "card123",
+    "Guilherme": "gui123",
+    "Paulo": "pau123",
+    "ADM": "adm9988"
 }
 
 TURMAS = [nome for nome in CREDENCIAIS.keys() if nome != "ADM"]
@@ -199,7 +199,10 @@ else:
             
             st.subheader("📝 Registrar Lançamento")
             with st.form("form_gasto", clear_on_submit=True):
-                categoria_escolhida = st.selectbox("Selecione o que foi gasto", ["Café da Manhã", "Almoço", "Café da Tarde", "Jantar", "Pedágio / Transporte", "Outros"])
+                categoria_escolhida = st.selectbox(
+                    "Selecione o que foi gasto", 
+                    ["Café da Manhã", "Almoço", "Café da Tarde", "Jantar", "Construção", "Oficinas Mecânica", "Pedágio", "Transportes"]
+                )
                 opcao_pgto = st.radio("Qual foi o método de pagamento?", ["💵 Dinheiro em Espécie", "💳 Cartão de Crédito"], horizontal=True)
                 valor_input = st.text_input("Valor gasto R$ (Exemplo: 25,50)")
                 
@@ -270,11 +273,11 @@ else:
     if st.session_state.perfil == "ADM":
         with aba3[0]:
             st.subheader("🚨 Ferramentas de Gestão Central")
-            st.write("Esta ação zera instantaneamente o balanço e as barras semanais de todos os colaboradores, preservando os históricos arquivados.")
+            st.write("Esta ação zera instantaneamente o balanço e as barras semanais de todos os colaboradores para iniciar o controle da nova semana. O histórico acumulado do mês NÃO é modificado.")
             
-            if st.button("RESETAR SEMANA DE TODOS"):
+            if st.button("RESETAR GASTOS DA SEMANA (FECHAR SEMANA)"):
                 for t in TURMAS:
                     st.session_state.dados[t]["transacoes"] = []
                 salvar_dados(st.session_state.dados)
-                st.success("🚨 O balanço e as barras da semana de todos os colaboradores foram limpos com sucesso!")
+                st.success("🚨 Semana fechada com sucesso! Todos os gráficos voltaram a zero e as turmas estão prontas para a nova semana.")
                 st.rerun()
