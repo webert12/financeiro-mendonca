@@ -35,9 +35,17 @@ def salvar_dados(dados):
 
 dados = carregar_dados()
 
-# --- TOPO DO APLICATIVO ---
-st.markdown("<h1 style='text-align: center; color: #00bcd4;'>MENDONÇA POÇOS</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center; color: #888;'>POÇOS ARTESIANOS • GESTÃO FINANCEIRA</p>", unsafe_allow_html=True)
+# --- TOPO DO APLICATIVO COM LOGO ---
+col_logo1, col_logo2, col_logo3 = st.columns([1, 2, 1])
+with col_logo2:
+    # Tenta carregar a imagem local se ela estiver na mesma pasta do código no GitHub
+    if os.path.exists("logo.png"):
+        st.image("logo.png", use_container_width=True)
+    else:
+        # Texto reserva elegante caso você ainda não tenha subido o arquivo na pasta
+        st.markdown("<h1 style='text-align: center; color: #00bcd4;'>MENDONÇA POÇOS</h1>", unsafe_allow_html=True)
+
+st.markdown("<p style='text-align: center; color: #888; margin-top: -10px;'>POÇOS ARTESIANOS • GESTÃO FINANCEIRA</p>", unsafe_allow_html=True)
 st.divider()
 
 # --- CALCULOS DOS GASTOS ---
