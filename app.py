@@ -199,32 +199,34 @@ else:
             
             st.divider()
             
-            # --- ÁREA OCULTA: ATIVAÇÃO POR BOTÃO TOGGLE ---
-            mostrar_formulario = st.toggle("📝 Registrar Despesas", value=False)
+            # --- ÁREA OCULTA POR BOTÃO ---
+            mostrar_painel = st.toggle("📝 Registrar Despesas", value=False)
             
-            if mostrar_formulario:
+            if mostrar_painel:
                 st.subheader("Nova Despesa")
-                with st.form("form_gasto", clear_on_submit=True):
-                    # Menu Principal do Primeiro Nível
-                    categoria_pai = st.selectbox(
-                        "Selecione o que foi gasto", 
-                        ["Café da Manhã", "Almoço", "Mecânica", "Outros"]
-                    )
-                    
-                    # Lógica Condicional para a categoria "Outros"
-                    sub_categoria = "Nenhum"
-                    detalhe_texto = ""
-                    
-                    if categoria_pai == "Outros":
-                        st.markdown("⚠️ **Você selecionou 'Outros'. Especifique abaixo:**")
-                        sub_categoria = st.radio("Escolha a subcategoria", ["Pedágio", "Transportes", "Escrever motivo próprio"], horizontal=True)
-                        if sub_categoria == "Escrever motivo próprio":
-                            detalhe_texto = st.text_input("Com o que foi o gasto? (Ex: Compra de Cano, Luva, Chave)")
-                    
+                
+                # Categoria pai fora do form para atualização em tempo real
+                categoria_pai = st.selectbox(
+                    "Selecione o que foi gasto", 
+                    ["Café da Manhã", "Almoço", "Outros"]
+                )
+                
+                sub_categoria = "Nenhum"
+                detalhe_texto = ""
+                
+                # Se for outros, abre as subopções imediatamente na tela
+                if categoria_pai == "Outros":
+                    st.markdown("⬇️ **Selecione o tipo de despesa extra:**")
+                    sub_categoria = st.radio("Subcategoria", ["Mecânica", "Pedágio", "Transportes", "Escrever motivo próprio"], horizontal=True)
+                    if sub_categoria == "Escrever motivo próprio":
+                        detalhe_texto = st.text_input("Escreva detalhadamente o que foi gasto:")
+
+                # Formulário apenas para dados finais de envio
+                with st.form("form_final_envio", clear_on_submit=True):
                     opcao_pgto = st.radio("Qual foi o método de pagamento?", ["💵 Dinheiro em Espécie", "💳 Cartão de Crédito"], horizontal=True)
                     valor_input = st.text_input("Valor gasto R$ (Exemplo: 25,50)")
                     
-                    enviado = st.form_submit_button("CONFIRMAR E SALVAR")
+                    enviado = st.form_submit_button("CONFIRMAR E SALVAR LANÇAMENTO")
                     
                     if enviado:
                         try:
@@ -235,12 +237,12 @@ else:
                                 metodo_final = "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão"
                                 agora = datetime.now()
                                 
-                                # Processamento do nome da categoria final para o relatório
+                                # Define o nome correto da categoria no banco de dados
                                 if categoria_pai == "Outros":
                                     if sub_categoria == "Escrever motivo próprio" and detalhe_texto.strip() != "":
                                         categoria_final = f"Outros ({detalhe_texto.strip()})"
                                     else:
-                                        categoria_final = f"Outros ({sub_categoria})"
+                                        categoria_final = f"{sub_categoria}"
                                 else:
                                     categoria_final = categoria_pai
                                 
@@ -255,18 +257,19 @@ else:
                                 st.session_state.dados[t_ativa]["transacoes"].append(nova_transacao)
                                 st.session_state.dados[t_ativa]["historico"].append(nova_transacao)
                                 salvar_dados(st.session_state.dados)
-                                st.success("✓ Gasto registrado de forma permanente!")
+                                st.success("✓ Gasto registrado com sucesso!")
                                 st.rerun()
                         except ValueError:
                             st.error("Entrada inválida. Digite apenas números no campo de valor.")
 
-            st.write("**Gastos Recentes da Semana Atual:**")
-            if trans_semana:
-                for t in reversed(trans_semana[-5:]):
-                    icone = "💵" if t["metodo"] == "Dinheiro" else "💳"
-                    st.markdown(f"{icone} **{t['data']}** - {t['categoria']} - `R$ {t['valor']:.2f}`")
-            else:
-                st.caption("Nenhum gasto registrado nesta semana.")
+                st.divider()
+                st.write("**Gastos Recentes da Semana Atual:**")
+                if trans_semana:
+                    for t in reversed(trans_semana[-5:]):
+                        icone = "💵" if t["metodo"] == "Dinheiro" else "💳"
+                        st.markdown(f"{icone} **{t['data']}** - {t['categoria']} - `R$ {t['valor']:.2f}`")
+                else:
+                    st.caption("Nenhum gasto registrado nesta semana.")
 
     # --- ABA 2: HISTÓRICO MENSAL ARQUIVADO ---
     with aba2:
