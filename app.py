@@ -118,25 +118,23 @@ if st.session_state.perfil is None:
     desenhar_logo()
     
     if st.session_state.selecionou_usuario is None:
-        st.write("Selecione seu perfil para acessar o painel:")
+        st.write("Identifique-se para entrar no aplicativo:")
         
-        col1, col2 = st.columns(2)
-        for idx, t in enumerate(TURMAS):
-            c = col1 if idx % 2 == 0 else col2
-            if c.button(t):
-                st.session_state.selecionou_usuario = t
-                st.rerun()
+        # Botão principal limpo que oculta tudo
+        if st.button("🔐 ACESSAR SISTEMA"):
+            st.session_state.selecionou_usuario = "FUNCIONARIO_FORM"
+            st.rerun()
                 
         st.divider()
         if st.button("🔑 ACESSO ADMINISTRADOR (ADM)", type="secondary"):
-            st.session_state.selecionou_usuario = "ADM"
+            st.session_state.selecionou_usuario = "ADM_SENHA"
             st.rerun()
             
-    else:
-        user = st.session_state.selecionou_usuario
-        st.write(f"Digite a senha de acesso para: **{user}**")
-        
-        senha_digitada = st.text_input("Senha", type="password")
+    # Formulário de login manual para os funcionários (Ocultando a lista de nomes)
+    elif st.session_state.selecionou_usuario == "FUNCIONARIO_FORM":
+        st.subheader("Login de Colaborador")
+        usuario_digitado = st.text_input("Digite seu Nome (Usuário)")
+        senha_digitada = st.text_input("Digite sua Senha", type="password")
         
         c_voltar, c_entrar = st.columns(2)
         if c_voltar.button("Voltar"):
@@ -144,16 +142,54 @@ if st.session_state.perfil is None:
             st.rerun()
             
         if c_entrar.button("Entrar"):
-            if senha_digitada == CREDENCIAIS[user]:
-                if user == "ADM":
-                    st.session_state.perfil = "ADM"
-                else:
+            # Validação se o usuário existe nas chaves e se a senha está correta
+            if usuario_digitado in CREDENCIAIS and usuario_digitado != "ADM":
+                if senha_digitada == CREDENCIAIS[usuario_digitado]:
                     st.session_state.perfil = "TURMA"
-                    st.session_state.turma = user
-                st.session_state.selecionou_usuario = None
+                    st.session_state.turma = usuario_digitado
+                    st.session_state.selecionou_usuario = None
+                    st.rerun()
+                else:
+                    st.error("Senha incorreta! Tente novamente.")
+            else:
+                st.error("Usuário não encontrado. Verifique se escreveu o nome corretamente.")
+
+    # Formulário de verificação do ADM corporativo
+    elif st.session_state.selecionou_usuario == "ADM_SENHA":
+        st.write("Digite a senha master para o perfil: **ADM**")
+        senha_adm = st.text_input("Senha ADM", type="password")
+        
+        c_voltar, c_entrar = st.columns(2)
+        if c_voltar.button("Voltar"):
+            st.session_state.selecionou_usuario = None
+            st.rerun()
+            
+        if c_entrar.button("Entrar como ADM"):
+            if senha_adm == CREDENCIAIS["ADM"]:
+                st.session_state.perfil = "ADM"
+                st.session_state.selecionou_usuario = "ADM_MONITORAMENTO" # Mantém os botões ativos só aqui dentro
                 st.rerun()
             else:
-                st.error("Senha incorreta! Tente novamente.")
+                st.error("Senha de Administrador incorreta!")
+
+    # Painel exclusivo de monitoramento visual do ADM na raiz do login (apenas se ele quiser selecionar alguém para ver direto)
+    elif st.session_state.selecionou_usuario == "ADM_MONITORAMENTO":
+        st.subheader("Painel de Monitoramento (ADM)")
+        st.write("Selecione uma das equipes abaixo para auditar ou clique em 'Entrar no Painel Geral':")
+        
+        col1, col2 = st.columns(2)
+        for idx, t in enumerate(TURMAS):
+            c = col1 if idx % 2 == 0 else col2
+            if c.button(f"Ver {t}"):
+                st.session_state.perfil = "TURMA"
+                st.session_state.turma = t
+                st.session_state.selecionou_usuario = None
+                st.rerun()
+                
+        st.divider()
+        if st.button("Ir para o Painel Geral Consolidado 📊"):
+            st.session_state.selecionou_usuario = None
+            st.rerun()
 
 # --- INTERFACE PRINCIPAL OPERACIONAL ---
 else:
@@ -166,6 +202,7 @@ else:
         if st.button("Sair"):
             st.session_state.perfil = None
             st.session_state.turma = None
+            st.session_state.selecionou_usuario = None
             st.rerun()
             
     desenhar_logo()
@@ -180,7 +217,7 @@ else:
     # --- ABA 1: REGISTRO DE GASTOS E PRODUÇÃO ---
     with aba1:
         if st.session_state.perfil == "ADM":
-            st.warning("O perfil Administrador serve apenas para monitoramento corporativo. Faça login com o seu nome para registrar dados.")
+            st.warning("O perfil Administrador serve apenas para monitoramento corporativo. Faça login com o nome de um colaborador para registrar dados de campo.")
         else:
             t_ativa = st.session_state.turma
             trans_semana = st.session_state.dados[t_ativa]["transacoes"]
@@ -276,7 +313,6 @@ else:
                 st.subheader("Relatório de Poço Concluído")
                 
                 with st.form("form_pocos_perfurados", clear_on_submit=True):
-                    # Data inserida de forma manual como texto conforme solicitado
                     data_poco = st.text_input("Data da conclusão (dia/mês/ano)", value=datetime.now().strftime("%d/%m/%Y"))
                     cidade_poco = st.text_input("Cidade onde o poço foi feito")
                     metragem_poco = st.text_input("Metragem total finalizada (Ex: 85 metros)")
@@ -327,7 +363,6 @@ else:
         if meses_disponiveis:
             mes_sel = st.selectbox("Escolha o mês de referência", meses_disponiveis)
             
-            # Sub-aba interna para organizar Dinheiro vs Produção Física
             sub_aba_financeiro, sub_aba_producao = st.tabs(["💰 Controle de Custos", "🚰 Poços Executados"])
             
             with sub_aba_financeiro:
