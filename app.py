@@ -70,16 +70,19 @@ TURMAS = [nome for nome in CREDENCIAIS.keys() if nome != "ADM"]
 
 # --- FUNÇÕES DE ARMAZENAMENTO ISOLADO ---
 def carregar_dados():
-    estrutura_limpa = {t: {"transacoes": [], "historico": []} for t in TURMAS}
+    estrutura_limpa = {t: {"transacoes": [], "historico": [], "pocos": []} for t in TURMAS}
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             try:
                 dados = json.load(f)
                 if "transacoes" in dados or isinstance(dados, list):
                     return estrutura_limpa
+                # Garante que chaves novas como 'pocos' existam mesmo em arquivos antigos
                 for t in TURMAS:
                     if t not in dados:
-                        dados[t] = {"transacoes": [], "historico": []}
+                        dados[t] = {"transacoes": [], "historico": [], "pocos": []}
+                    if "pocos" not in dados[t]:
+                        dados[t]["pocos"] = []
                 return dados
             except:
                 return estrutura_limpa
@@ -174,13 +177,14 @@ else:
         
     aba1, aba2, *aba3 = st.tabs(abas_menu)
 
-    # --- ABA 1: REGISTRO DE GASTOS SEMANAIS ---
+    # --- ABA 1: REGISTRO DE GASTOS E PRODUÇÃO ---
     with aba1:
         if st.session_state.perfil == "ADM":
-            st.warning("O perfil Administrador serve apenas para monitoramento corporativo. Faça login com o seu nome para registrar seus gastos.")
+            st.warning("O perfil Administrador serve apenas para monitoramento corporativo. Faça login com o seu nome para registrar dados.")
         else:
             t_ativa = st.session_state.turma
             trans_semana = st.session_state.dados[t_ativa]["transacoes"]
+            pocos_registrados = st.session_state.dados[t_ativa].get("pocos", [])
             
             # Cálculos de consumo da semana
             total_dinheiro = sum(t["valor"] for t in trans_semana if t.get("metodo") == "Dinheiro")
@@ -199,13 +203,11 @@ else:
             
             st.divider()
             
-            # --- ÁREA OCULTA POR BOTÃO ---
+            # --- ÁREA 1 OCULTA: REGISTRO DE DESPESAS ---
             mostrar_painel = st.toggle("📝 Registrar Despesas", value=False)
-            
             if mostrar_painel:
                 st.subheader("Nova Despesa")
                 
-                # Categoria pai fora do form para atualização em tempo real
                 categoria_pai = st.selectbox(
                     "Selecione o que foi gasto", 
                     ["Café da Manhã", "Almoço", "Outros"]
@@ -214,14 +216,12 @@ else:
                 sub_categoria = "Nenhum"
                 detalhe_texto = ""
                 
-                # Se for outros, abre as subopções imediatamente na tela
                 if categoria_pai == "Outros":
                     st.markdown("⬇️ **Selecione o tipo de despesa extra:**")
                     sub_categoria = st.radio("Subcategoria", ["Mecânica", "Pedágio", "Transportes", "Escrever motivo próprio"], horizontal=True)
                     if sub_categoria == "Escrever motivo próprio":
                         detalhe_texto = st.text_input("Escreva detalhadamente o que foi gasto:")
 
-                # Formulário apenas para dados finais de envio
                 with st.form("form_final_envio", clear_on_submit=True):
                     opcao_pgto = st.radio("Qual foi o método de pagamento?", ["💵 Dinheiro em Espécie", "💳 Cartão de Crédito"], horizontal=True)
                     valor_input = st.text_input("Valor gasto R$ (Exemplo: 25,50)")
@@ -237,7 +237,6 @@ else:
                                 metodo_final = "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão"
                                 agora = datetime.now()
                                 
-                                # Define o nome correto da categoria no banco de dados
                                 if categoria_pai == "Outros":
                                     if sub_categoria == "Escrever motivo próprio" and detalhe_texto.strip() != "":
                                         categoria_final = f"Outros ({detalhe_texto.strip()})"
@@ -271,31 +270,85 @@ else:
                 else:
                     st.caption("Nenhum gasto registrado nesta semana.")
 
-    # --- ABA 2: HISTÓRICO MENSAL ARQUIVADO ---
+            # --- ÁREA 2 OCULTA: POÇOS PERFURADOS ---
+            mostrar_pocos = st.toggle("🚰 Poços Perfurados", value=False)
+            if mostrar_pocos:
+                st.subheader("Relatório de Poço Concluído")
+                
+                with st.form("form_pocos_perfurados", clear_on_submit=True):
+                    # Data inserida de forma manual como texto conforme solicitado
+                    data_poco = st.text_input("Data da conclusão (dia/mês/ano)", value=datetime.now().strftime("%d/%m/%Y"))
+                    cidade_poco = st.text_input("Cidade onde o poço foi feito")
+                    metragem_poco = st.text_input("Metragem total finalizada (Ex: 85 metros)")
+                    material_poco = st.text_area("Materiais de tubulação utilizados no poço")
+                    
+                    enviar_poco = st.form_submit_button("SALVAR RELATÓRIO DO POÇO")
+                    
+                    if enviar_poco:
+                        if not cidade_poco or not metragem_poco or not material_poco:
+                            st.error("Por favor, preencha todos os campos do formulário antes de salvar.")
+                        else:
+                            novo_poco = {
+                                "data": data_poco,
+                                "ano_mes": datetime.now().strftime("%Y-%m"),
+                                "cidade": cidade_poco,
+                                "metragem": metragem_poco,
+                                "material": material_poco
+                            }
+                            if "pocos" not in st.session_state.dados[t_ativa]:
+                                st.session_state.dados[t_ativa]["pocos"] = []
+                                
+                            st.session_state.dados[t_ativa]["pocos"].append(novo_poco)
+                            salvar_dados(st.session_state.dados)
+                            st.success("✓ Relatório do poço arquivado com sucesso!")
+                            st.rerun()
+                
+                st.divider()
+                st.write("**Histórico de Poços Feitos por Você:**")
+                if pocos_registrados:
+                    for idx, p in enumerate(reversed(pocos_registrados)):
+                        with st.expander(f"📍 {p['data']} - {p['cidade']} ({p['metragem']})"):
+                            st.write(f"**Material Utilizado:**\n{p['material']}")
+                else:
+                    st.caption("Nenhum poço registrado nesta conta.")
+
+    # --- ABA 2: HISTÓRICO MENSAL ARQUIVADO (VISÃO DE RELATÓRIO) ---
     with aba2:
         st.subheader("📅 Histórico Mensal")
         
-        # Seleção de escopo para o ADM poder auditar equipes individualmente
         target_turma = st.session_state.turma
         if st.session_state.perfil == "ADM":
             target_turma = st.selectbox("Selecione o colaborador para conferência", TURMAS)
             
         historico_alvo = st.session_state.dados[target_turma]["historico"]
-        meses_disponiveis = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in historico_alvo)), reverse=True)
+        pocos_alvo = st.session_state.dados[target_turma].get("pocos", [])
+        meses_disponiveis = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in historico_alvo + pocos_alvo)), reverse=True)
         
         if meses_disponiveis:
             mes_sel = st.selectbox("Escolha o mês de referência", meses_disponiveis)
-            transacoes_mes = [t for t in historico_alvo if t.get("ano_mes", "") == mes_sel]
             
-            tot_din_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Dinheiro")
-            tot_car_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Cartão")
+            # Sub-aba interna para organizar Dinheiro vs Produção Física
+            sub_aba_financeiro, sub_aba_producao = st.tabs(["💰 Controle de Custos", "🚰 Poços Executados"])
             
-            st.info(f"💰 **Total Período:** 💵 Dinheiro: R$ {tot_din_mes:.2f} | 💳 Cartão: R$ {tot_car_mes:.2f}")
-            
-            st.write("**Lançamentos do Mês:**")
-            for t in reversed(transacoes_mes):
-                icone = "💵" if t["metodo"] == "Dinheiro" else "💳"
-                st.markdown(f"{icone} **{t['data']}** - {t['categoria']} - `R$ {t['valor']:.2f}`")
+            with sub_aba_financeiro:
+                transacoes_mes = [t for t in historico_alvo if t.get("ano_mes", "") == mes_sel]
+                tot_din_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Dinheiro")
+                tot_car_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Cartão")
+                
+                st.info(f"💰 **Total Período:** 💵 Dinheiro: R$ {tot_din_mes:.2f} | 💳 Cartão: R$ {tot_car_mes:.2f}")
+                for t in reversed(transacoes_mes):
+                    icone = "💵" if t["metodo"] == "Dinheiro" else "💳"
+                    st.markdown(f"{icone} **{t['data']}** - {t['categoria']} - `R$ {t['valor']:.2f}`")
+                    
+            with sub_aba_producao:
+                pocos_mes = [p for p in pocos_alvo if p.get("ano_mes", "") == mes_sel]
+                if pocos_mes:
+                    for p in reversed(pocos_mes):
+                        st.markdown(f"🟩 **Data:** {p['data']} | **Cidade:** {p['cidade']} | **Metragem:** {p['metragem']}")
+                        st.caption(f"**Materiais aplicados:** {p['material']}")
+                        st.divider()
+                else:
+                    st.caption("Nenhum poço registrado por esta equipe no mês selecionado.")
         else:
             st.write("Nenhum dado permanente arquivado nesta conta.")
 
