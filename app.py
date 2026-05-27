@@ -175,7 +175,7 @@ if st.session_state.perfil is None:
     # Painel exclusivo de monitoramento visual do ADM na raiz do login (apenas se ele quiser selecionar alguém para ver direto)
     elif st.session_state.selecionou_usuario == "ADM_MONITORAMENTO":
         st.subheader("Painel de Monitoramento (ADM)")
-        st.write("Selecione uma das equipes abaixo para auditar ou clique em 'Entrar no Painel Geral':")
+        st.write("Selecione uma das equipes abaixo para auditar ou clique em 'Entrar no Panel Geral':")
         
         col1, col2 = st.columns(2)
         for idx, t in enumerate(TURMAS):
@@ -314,22 +314,26 @@ else:
                 
                 with st.form("form_pocos_perfurados", clear_on_submit=True):
                     data_poco = st.text_input("Data da conclusão (dia/mês/ano)", value=datetime.now().strftime("%d/%m/%Y"))
+                    cliente_poco = st.text_input("Nome do Cliente / Empresa")
                     cidade_poco = st.text_input("Cidade onde o poço foi feito")
                     metragem_poco = st.text_input("Metragem total finalizada (Ex: 85 metros)")
                     material_poco = st.text_area("Materiais de tubulação utilizados no poço")
+                    funcionarios_poco = st.text_input("Funcionários que trabalharam neste poço (Separe por vírgula)")
                     
                     enviar_poco = st.form_submit_button("SALVAR RELATÓRIO DO POÇO")
                     
                     if enviar_poco:
-                        if not cidade_poco or not metragem_poco or not material_poco:
+                        if not cliente_poco or not cidade_poco or not metragem_poco or not material_poco or not funcionarios_poco:
                             st.error("Por favor, preencha todos os campos do formulário antes de salvar.")
                         else:
                             novo_poco = {
                                 "data": data_poco,
                                 "ano_mes": datetime.now().strftime("%Y-%m"),
+                                "cliente": cliente_poco,
                                 "cidade": cidade_poco,
                                 "metragem": metragem_poco,
-                                "material": material_poco
+                                "material": material_poco,
+                                "funcionarios": funcionarios_poco
                             }
                             if "pocos" not in st.session_state.dados[t_ativa]:
                                 st.session_state.dados[t_ativa]["pocos"] = []
@@ -343,7 +347,10 @@ else:
                 st.write("**Histórico de Poços Feitos por Você:**")
                 if pocos_registrados:
                     for idx, p in enumerate(reversed(pocos_registrados)):
-                        with st.expander(f"📍 {p['data']} - {p['cidade']} ({p['metragem']})"):
+                        cliente_str = p.get('cliente', 'Não informado')
+                        with st.expander(f"📍 {p['data']} - {cliente_str} ({p['cidade']})"):
+                            st.write(f"**Metragem:** {p['metragem']}")
+                            st.write(f"**Equipe de Trabalho:** {p.get('funcionarios', 'Não informada')}")
                             st.write(f"**Material Utilizado:**\n{p['material']}")
                 else:
                     st.caption("Nenhum poço registrado nesta conta.")
@@ -354,7 +361,7 @@ else:
         
         target_turma = st.session_state.turma
         if st.session_state.perfil == "ADM":
-            target_turma = st.selectbox("Selecione o colaborador para conferência", TURMAS)
+            target_turma = st.selectbox("Selecione o colaborador para referência", TURMAS)
             
         historico_alvo = st.session_state.dados[target_turma]["historico"]
         pocos_alvo = st.session_state.dados[target_turma].get("pocos", [])
@@ -379,8 +386,10 @@ else:
                 pocos_mes = [p for p in pocos_alvo if p.get("ano_mes", "") == mes_sel]
                 if pocos_mes:
                     for p in reversed(pocos_mes):
-                        st.markdown(f"🟩 **Data:** {p['data']} | **Cidade:** {p['cidade']} | **Metragem:** {p['metragem']}")
-                        st.caption(f"**Materiais aplicados:** {p['material']}")
+                        st.markdown(f"🟩 **Data:** {p['data']} | **Cliente:** {p.get('cliente', 'Não informado')}")
+                        st.markdown(f"📍 **Local:** {p['cidade']} | **Metragem:** {p['metragem']}")
+                        st.markdown(f"👥 **Trabalhadores:** {p.get('funcionarios', 'Não informada')}")
+                        st.caption(f"📦 **Materiais aplicados:** {p['material']}")
                         st.divider()
                 else:
                     st.caption("Nenhum poço registrado por esta equipe no mês selecionado.")
