@@ -197,41 +197,68 @@ else:
             st.progress(pct_consumido)
             st.caption(f"Progresso de consumo do limite semanal ({int(pct_consumido*100)}%)")
             
-            st.subheader("📝 Registrar Lançamento")
-            with st.form("form_gasto", clear_on_submit=True):
-                categoria_escolhida = st.selectbox(
-                    "Selecione o que foi gasto", 
-                    ["Café da Manhã", "Almoço", "Café da Tarde", "Jantar", "Construção", "Oficinas Mecânica", "Pedágio", "Transportes"]
-                )
-                opcao_pgto = st.radio("Qual foi o método de pagamento?", ["💵 Dinheiro em Espécie", "💳 Cartão de Crédito"], horizontal=True)
-                valor_input = st.text_input("Valor gasto R$ (Exemplo: 25,50)")
-                
-                enviado = st.form_submit_button("SALVAR LANÇAMENTO")
-                
-                if enviado:
-                    try:
-                        valor_final = float(valor_input.replace(",", "."))
-                        if valor_final <= 0:
-                            st.error("Insira um valor maior que zero.")
-                        else:
-                            metodo_final = "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão"
-                            agora = datetime.now()
-                            
-                            nova_transacao = {
-                                "data": agora.strftime("%d/%m %H:%M"),
-                                "ano_mes": agora.strftime("%Y-%m"),
-                                "categoria": categoria_escolhida,
-                                "metodo": metodo_final,
-                                "valor": valor_final
-                            }
-                            
-                            st.session_state.dados[t_ativa]["transacoes"].append(nova_transacao)
-                            st.session_state.dados[t_ativa]["historico"].append(nova_transacao)
-                            salvar_dados(st.session_state.dados)
-                            st.success("✓ Gasto registrado de forma permanente!")
-                            st.rerun()
-                    except ValueError:
-                        st.error("Entrada inválida. Digite apenas números no campo de valor.")
+            st.divider()
+            
+            # --- ÁREA OCULTA: ATIVAÇÃO POR BOTÃO TOGGLE ---
+            mostrar_formulario = st.toggle("📝 Registrar Despesas", value=False)
+            
+            if mostrar_formulario:
+                st.subheader("Nova Despesa")
+                with st.form("form_gasto", clear_on_submit=True):
+                    # Menu Principal do Primeiro Nível
+                    categoria_pai = st.selectbox(
+                        "Selecione o que foi gasto", 
+                        ["Café da Manhã", "Almoço", "Mecânica", "Outros"]
+                    )
+                    
+                    # Lógica Condicional para a categoria "Outros"
+                    sub_categoria = "Nenhum"
+                    detalhe_texto = ""
+                    
+                    if categoria_pai == "Outros":
+                        st.markdown("⚠️ **Você selecionou 'Outros'. Especifique abaixo:**")
+                        sub_categoria = st.radio("Escolha a subcategoria", ["Pedágio", "Transportes", "Escrever motivo próprio"], horizontal=True)
+                        if sub_categoria == "Escrever motivo próprio":
+                            detalhe_texto = st.text_input("Com o que foi o gasto? (Ex: Compra de Cano, Luva, Chave)")
+                    
+                    opcao_pgto = st.radio("Qual foi o método de pagamento?", ["💵 Dinheiro em Espécie", "💳 Cartão de Crédito"], horizontal=True)
+                    valor_input = st.text_input("Valor gasto R$ (Exemplo: 25,50)")
+                    
+                    enviado = st.form_submit_button("CONFIRMAR E SALVAR")
+                    
+                    if enviado:
+                        try:
+                            valor_final = float(valor_input.replace(",", "."))
+                            if valor_final <= 0:
+                                st.error("Insira um valor maior que zero.")
+                            else:
+                                metodo_final = "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão"
+                                agora = datetime.now()
+                                
+                                # Processamento do nome da categoria final para o relatório
+                                if categoria_pai == "Outros":
+                                    if sub_categoria == "Escrever motivo próprio" and detalhe_texto.strip() != "":
+                                        categoria_final = f"Outros ({detalhe_texto.strip()})"
+                                    else:
+                                        categoria_final = f"Outros ({sub_categoria})"
+                                else:
+                                    categoria_final = categoria_pai
+                                
+                                nova_transacao = {
+                                    "data": agora.strftime("%d/%m %H:%M"),
+                                    "ano_mes": agora.strftime("%Y-%m"),
+                                    "categoria": categoria_final,
+                                    "metodo": metodo_final,
+                                    "valor": valor_final
+                                }
+                                
+                                st.session_state.dados[t_ativa]["transacoes"].append(nova_transacao)
+                                st.session_state.dados[t_ativa]["historico"].append(nova_transacao)
+                                salvar_dados(st.session_state.dados)
+                                st.success("✓ Gasto registrado de forma permanente!")
+                                st.rerun()
+                        except ValueError:
+                            st.error("Entrada inválida. Digite apenas números no campo de valor.")
 
             st.write("**Gastos Recentes da Semana Atual:**")
             if trans_semana:
