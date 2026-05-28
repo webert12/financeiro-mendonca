@@ -12,18 +12,8 @@ st.set_page_config(
 )
 
 # Estilização profissional para Celular (Mobile-First)
-# Adicionado comandos CSS para ocultar completamente o header, footer, botões de share e menus indesejados
 st.markdown("""
     <style>
-    /* Ocultar elementos nativos indesejados do Streamlit */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
-    .stDeployButton {display:none !important;}
-    footer {display: none !important;}
-    #stDecoration {display:none !important;}
-    
-    /* Customização do App */
     .main { background-color: #0e1117; }
     div.stButton > button:first-child {
         background-color: #00cfcc;
