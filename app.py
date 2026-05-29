@@ -4,15 +4,25 @@ import os
 from datetime import datetime
 
 # --- CONFIGURAÇÃO VISUAL ESTILO "APK" ---
-st.set_page_config(page_title="Mendonça Poços",page_icon="💧",layout="centered",initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Mendonça Poços", page_icon="💧", layout="centered", initial_sidebar_state="collapsed")
+
 # Estilização profissional para Celular (Mobile-First)
-st.markdown("""<style> .stApp { background-color: #f0f2f6; } </style>""", unsafe_allow_html=True)
+st.markdown("""""", unsafe_allow_html=True)
 
 DATA_FILE = "gastos_dados.json"
 LIMITE_DINHEIRO_SEMANAL = 500.00
 
 # --- USUÁRIOS E SENHAS ---
-CREDENCIAIS = {"Rafael": "raf123","Ednaldo": "edn123","Luiz Felipe": "luiz123","Carlos": "car123","Cardoso": "card123","Guilherme": "gui123","Paulo": "pau123","ADM": "adm9988"}
+CREDENCIAIS = {
+    "Rafael": "raf123",
+    "Ednaldo": "edn123",
+    "Luiz Felipe": "luiz123",
+    "Carlos": "car123",
+    "Cardoso": "card123",
+    "Guilherme": "gui123",
+    "Paulo": "pau123",
+    "ADM": "adm9988"
+}
 TURMAS = [nome for nome in CREDENCIAIS.keys() if nome != "ADM"]
 
 # --- FUNÇÕES DE ARMAZENAMENTO ISOLADO ---
@@ -22,11 +32,19 @@ def carregar_dados():
         with open(DATA_FILE, "r") as f:
             try:
                 dados = json.load(f)
+                if "transacoes" in dados or isinstance(dados, list):
+                    return estrutura_limpa
+                # Garante que chaves novas como 'pocos' e 'midias' existam mesmo em arquivos antigos
                 for t in TURMAS:
-                    if t not in dados: dados[t] = {"transacoes": [], "historico": [], "pocos": [], "midias": []}
-                    if "midias" not in dados[t]: dados[t]["midias"] = []
+                    if t not in dados:
+                        dados[t] = {"transacoes": [], "historico": [], "pocos": [], "midias": []}
+                    if "pocos" not in dados[t]:
+                        dados[t]["pocos"] = []
+                    if "midias" not in dados[t]:
+                        dados[t]["midias"] = []
                 return dados
-            except: return estrutura_limpa
+            except:
+                return estrutura_limpa
     return estrutura_limpa
 
 def salvar_dados(dados):
@@ -34,57 +52,85 @@ def salvar_dados(dados):
         json.dump(dados, f, indent=4)
 
 # Inicialização do Estado da Sessão
-if 'dados' not in st.session_state: st.session_state.dados = carregar_dados()
-if 'perfil' not in st.session_state: st.session_state.perfil = None
-if 'turma' not in st.session_state: st.session_state.turma = None
-if 'selecionou_usuario' not in st.session_state: st.session_state.selecionou_usuario = None
+if 'dados' not in st.session_state:
+    st.session_state.dados = carregar_dados()
+if 'perfil' not in st.session_state:
+    st.session_state.perfil = None
+if 'turma' not in st.session_state:
+    st.session_state.turma = None
+if 'selecionou_usuario' not in st.session_state:
+    st.session_state.selecionou_usuario = None
 
 # --- DESIGN DA LOGO DA EMPRESA ---
 def desenhar_logo():
-    st.markdown("<br>", unsafe_allow_html=True)
-    if os.path.exists("logo.png"): st.image("logo.png", width=120)
-    else: st.markdown("<center><h1>💧</h1></center>", unsafe_allow_html=True)
-    st.markdown("<center>MENDONÇA POÇOS</center>", unsafe_allow_html=True)
-    st.markdown("<center>======= GESTÃO CORPORATIVA =======</center>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=120)
+    else:
+        st.markdown("<h1 style='font-size: 50px; margin: 0;'>💧</h1>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #0047AB; font-family: sans-serif; margin: 5px 0;'>MENDONÇA POÇOS</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: gray; letter-spacing: 2px; font-size: 12px;'>======= GESTÃO CORPORATIVA =======</p>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
 # --- TELA DE LOGIN / SELEÇÃO DE EQUIPE ---
 if st.session_state.perfil is None:
     desenhar_logo()
     if st.session_state.selecionou_usuario is None: 
         st.write("Identifique-se para entrar no aplicativo:") 
-        if st.button("🔐 ACESSAR SISTEMA"): st.session_state.selecionou_usuario = "FUNCIONARIO_FORM"; st.rerun() 
+        if st.button("🔐 ACESSAR SISTEMA"): 
+            st.session_state.selecionou_usuario = "FUNCIONARIO_FORM" 
+            st.rerun() 
         st.divider() 
-        if st.button("🔑 ACESSO ADMINISTRADOR (ADM)", type="secondary"): st.session_state.selecionou_usuario = "ADM_SENHA"; st.rerun() 
+        if st.button("🔑 ACESSO ADMINISTRADOR (ADM)", type="secondary"): 
+            st.session_state.selecionou_usuario = "ADM_SENHA" 
+            st.rerun() 
     elif st.session_state.selecionou_usuario == "FUNCIONARIO_FORM": 
         st.subheader("Login de Colaborador") 
         usuario_digitado = st.text_input("Digite seu Nome (Usuário)") 
         senha_digitada = st.text_input("Digite sua Senha", type="password") 
         c_voltar, c_entrar = st.columns(2) 
-        if c_voltar.button("Voltar"): st.session_state.selecionou_usuario = None; st.rerun() 
+        if c_voltar.button("Voltar"): 
+            st.session_state.selecionou_usuario = None 
+            st.rerun() 
         if c_entrar.button("Entrar"): 
             if usuario_digitado in CREDENCIAIS and usuario_digitado != "ADM": 
                 if senha_digitada == CREDENCIAIS[usuario_digitado]: 
-                    st.session_state.perfil = "TURMA"; st.session_state.turma = usuario_digitado; st.session_state.selecionou_usuario = None; st.rerun() 
-                else: st.error("Senha incorreta! Tente novamente.") 
-            else: st.error("Usuário não encontrado.")
+                    st.session_state.perfil = "TURMA" 
+                    st.session_state.turma = usuario_digitado 
+                    st.session_state.selecionou_usuario = None 
+                    st.rerun() 
+                else: 
+                    st.error("Senha incorreta! Tente novamente.") 
+            else: 
+                st.error("Usuário não encontrado.")
     elif st.session_state.selecionou_usuario == "ADM_SENHA": 
         st.write("Digite a senha master para o perfil: **ADM**") 
         senha_adm = st.text_input("Senha ADM", type="password") 
         c_voltar, c_entrar = st.columns(2) 
-        if c_voltar.button("Voltar"): st.session_state.selecionou_usuario = None; st.rerun() 
+        if c_voltar.button("Voltar"): 
+            st.session_state.selecionou_usuario = None 
+            st.rerun() 
         if c_entrar.button("Entrar como ADM"): 
-            if senha_adm == CREDENCIAIS["ADM"]: st.session_state.perfil = "ADM"; st.session_state.selecionou_usuario = "ADM_MONITORAMENTO"; st.rerun() 
-            else: st.error("Senha de Administrador incorreta!")
+            if senha_adm == CREDENCIAIS["ADM"]: 
+                st.session_state.perfil = "ADM" 
+                st.session_state.selecionou_usuario = "ADM_MONITORAMENTO" 
+                st.rerun() 
+            else: 
+                st.error("Senha de Administrador incorreta!")
     elif st.session_state.selecionou_usuario == "ADM_MONITORAMENTO": 
         st.subheader("Painel de Monitoramento (ADM)") 
         col1, col2 = st.columns(2) 
         for idx, t in enumerate(TURMAS): 
             c = col1 if idx % 2 == 0 else col2 
-            if c.button(f"Ver {t}"): st.session_state.perfil = "TURMA"; st.session_state.turma = t; st.session_state.selecionou_usuario = None; st.rerun() 
+            if c.button(f"Ver {t}"): 
+                st.session_state.perfil = "TURMA" 
+                st.session_state.turma = t 
+                st.session_state.selecionou_usuario = None 
+                st.rerun() 
         st.divider() 
-        if st.button("Ir para o Painel Geral Consolidado 📊"): st.session_state.selecionou_usuario = None; st.rerun()
-
+        if st.button("Ir para o Painel Geral Consolidado 📊"): 
+            st.session_state.selecionou_usuario = None 
+            st.rerun()
 # --- INTERFACE PRINCIPAL OPERACIONAL ---
 else:
     c_status, c_sair = st.columns([3, 1])
@@ -92,18 +138,28 @@ else:
         identificacao = st.session_state.turma if st.session_state.perfil == "TURMA" else "Gestor Geral (ADM)"
         st.markdown(f"🟢 Logado: {identificacao}")
     with c_sair:
-        if st.button("Sair"): st.session_state.perfil = None; st.session_state.turma = None; st.session_state.selecionou_usuario = None; st.rerun()
+        if st.button("Sair"):
+            st.session_state.perfil = None
+            st.session_state.turma = None
+            st.session_state.selecionou_usuario = None
+            st.rerun()
     
     desenhar_logo()
-    abas_menu = ["Registrar", "Relatório Mensal"]
-    if st.session_state.perfil == "ADM": abas_menu.append("Painel ADM") 
-    aba1, aba2, *aba3 = st.tabs(abas_menu)
+    
+    # Atualização das Abas para inclusão de Mídias
+    abas_menu = ["Registrar", "Mídias", "Relatório Mensal"]
+    if st.session_state.perfil == "ADM": 
+        abas_menu.append("Painel ADM") 
+    
+    aba1, aba2, aba3, *aba4 = st.tabs(abas_menu)
     
     with aba1: 
-        if st.session_state.perfil == "ADM": st.warning("O perfil Administrador serve apenas para monitoramento.") 
+        if st.session_state.perfil == "ADM": 
+            st.warning("O perfil Administrador serve apenas para monitoramento.")
         else: 
             t_ativa = st.session_state.turma 
             trans_semana = st.session_state.dados[t_ativa]["transacoes"] 
+            pocos_registrados = st.session_state.dados[t_ativa].get("pocos", []) 
             c1, c2 = st.columns(2) 
             c1.metric("💵 Dinheiro", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro'):.2f}") 
             c2.metric("💳 Cartão", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Cartão'):.2f}") 
@@ -126,46 +182,113 @@ else:
                     if st.form_submit_button("SALVAR RELATÓRIO"): 
                         st.session_state.dados[t_ativa]["pocos"].append({"data": datetime.now().strftime("%d/%m/%Y"), "ano_mes": datetime.now().strftime("%Y-%m"), "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun}) 
                         salvar_dados(st.session_state.dados); st.rerun()
-    
-    with aba2: 
+
+    # --- NOVA ABA: MÍDIAS (CÂMERA ORIGINAL / UPLOAD) ---
+    with aba2:
+        st.subheader("📷 Gerenciamento de Mídias")
+        if st.session_state.perfil == "ADM":
+            st.warning("O perfil Administrador serve apenas para monitoramento.")
+        else:
+            t_ativa = st.session_state.turma
+            
+            # Opção 1: Tirar foto em tempo real usando a câmera nativa do celular
+            st.write("**Opção 1: Tirar foto agora**")
+            foto_capturada = st.camera_input("Capturar Foto")
+            if foto_capturada is not None:
+                if st.button("💾 SALVAR FOTO DA CÂMERA"):
+                    if not os.path.exists("saved_media"):
+                        os.makedirs("saved_media")
+                    nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_camera.jpg"
+                    with open(nome_arquivo, "wb") as f:
+                        f.write(foto_capturada.getbuffer())
+                    
+                    nova_midia = {
+                        "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "ano_mes": datetime.now().strftime("%Y-%m"),
+                        "caminho": nome_arquivo,
+                        "tipo": "image/jpeg"
+                    }
+                    st.session_state.dados[t_ativa]["midias"].append(nova_midia)
+                    salvar_dados(st.session_state.dados)
+                    st.success("Foto da câmera salva com sucesso!")
+                    st.rerun()
+
+            st.divider()
+
+            # Opção 2: Gravar vídeo / Enviar arquivo existente usando os recursos originais do dispositivo
+            st.write("**Opção 2: Gravar vídeo ou escolher da Galeria**")
+            arquivo_enviado = st.file_uploader("Selecione ou Grave uma Mídia", type=["png", "jpg", "jpeg", "mp4", "mov", "avi"])
+            if arquivo_enviado is not None:
+                if st.button("💾 SALVAR MÍDIA ENVIADA"):
+                    if not os.path.exists("saved_media"):
+                        os.makedirs("saved_media")
+                    extensao = arquivo_enviado.name.split(".")[-1]
+                    nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{extensao}"
+                    with open(nome_arquivo, "wb") as f:
+                        f.write(arquivo_enviado.getbuffer())
+                    
+                    nova_midia = {
+                        "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "ano_mes": datetime.now().strftime("%Y-%m"),
+                        "caminho": nome_arquivo,
+                        "tipo": arquivo_enviado.type
+                    }
+                    st.session_state.dados[t_ativa]["midias"].append(nova_midia)
+                    salvar_dados(st.session_state.dados)
+                    st.success("Mídia salva com sucesso!")
+                    st.rerun()
+
+    with aba3: 
         st.subheader("📅 Histórico Mensal") 
         target_turma = st.session_state.turma if st.session_state.perfil == "TURMA" else st.selectbox("Selecione o Colaborador", TURMAS) 
         hist = st.session_state.dados[target_turma]["historico"] 
         pocos = st.session_state.dados[target_turma].get("pocos", []) 
-        meses = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in hist + pocos)), reverse=True) 
+        midias = st.session_state.dados[target_turma].get("midias", [])
+        
+        meses = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in hist + pocos + midias)), reverse=True) 
         if meses: 
             mes_sel = st.selectbox("Escolha o mês", meses) 
-            
-            # Adicionando a aba de Mídias apenas para funcionários
-            tabs_labels = ["💰 Custos", "🚰 Poços"]
-            if st.session_state.perfil == "TURMA": tabs_labels.append("📸 Mídias")
-            tabs = st.tabs(tabs_labels)
-            
-            with tabs[0]: 
+            sub_f, sub_p, sub_m = st.tabs(["💰 Custos", "🚰 Poços", "📷 Mídias"]) 
+            with sub_f: 
                 t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
                 resumo_fin = f"Relatório Financeiro - {target_turma} - {mes_sel}\n\n" + "\n".join([f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes]) 
                 st.download_button("📥 Baixar Relatório Financeiro", resumo_fin, f"financeiro_{target_turma}_{mes_sel}.txt") 
-                for t in reversed(t_mes): st.write(f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
-            with tabs[1]: 
+                for t in reversed(t_mes): 
+                    st.write(f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
+            with sub_p: 
                 p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel] 
                 if p_mes: 
                     sel_poco = st.selectbox("Escolha o poço para baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes]) 
                     p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco) 
                     resumo_poco = f"RELATÓRIO DE POÇO\nData: {p_baixar['data']}\nCliente: {p_baixar['cliente']}\nCidade: {p_baixar['cidade']}\nMetragem: {p_baixar['metragem']}\nFuncionários: {p_baixar['funcionarios']}\nMaterial: {p_baixar['material']}" 
                     st.download_button("📥 Baixar este Poço (PDF/TXT)", resumo_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.txt") 
-                    for p in reversed(p_mes): st.write(f"📍 {p['data']} - {p['cliente']} ({p['cidade']})") 
-                else: st.caption("Nenhum poço encontrado.")
+                    for p in reversed(p_mes): 
+                        st.write(f"📍 {p['data']} - {p['cliente']} ({p['cidade']})") 
+                else: 
+                    st.caption("Nenhum poço encontrado.")
             
-            if st.session_state.perfil == "TURMA":
-                with tabs[2]:
-                    st.write("Enviar foto ou vídeo:")
-                    midia_file = st.camera_input("Tirar Foto")
-                    upload_file = st.file_uploader("Ou enviar do dispositivo", type=["jpg", "png", "mp4"])
-                    if (midia_file or upload_file) and st.button("Confirmar envio"):
-                        st.success("Mídia enviada para o servidor!")
+            # Sub-aba exclusiva de Mídias vinculada ao histórico mensal do respectivo funcionário
+            with sub_m:
+                m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
+                if m_mes:
+                    for m in reversed(m_mes):
+                        st.write(f"📅 Enviado em: {m['data']}")
+                        if os.path.exists(m['caminho']):
+                            if "video" in m['tipo'] or m['caminho'].endswith(('.mp4', '.mov', '.avi')):
+                                st.video(m['caminho'])
+                            else:
+                                st.image(m['caminho'], use_container_width=True)
+                        else:
+                            st.caption("Arquivo físico não localizado.")
+                        st.divider()
+                else:
+                    st.caption("Nenhuma mídia registrada para este funcionário neste mês.")
+        else:
+            st.caption("Nenhum histórico encontrado.")
 
     if st.session_state.perfil == "ADM": 
-        with aba3[0]: 
+        with aba4[0]: 
             if st.button("RESETAR GASTOS DA SEMANA"): 
-                for t in TURMAS: st.session_state.dados[t]["transacoes"] = [] 
+                for t in TURMAS: 
+                    st.session_state.dados[t]["transacoes"] = [] 
                 salvar_dados(st.session_state.dados); st.rerun()
