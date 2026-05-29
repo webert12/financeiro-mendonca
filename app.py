@@ -277,8 +277,8 @@ else:
                 st.rerun()
 
     else:
-        # Interface Operacional Completa Exclusiva dos Funcionários
-        aba1, aba2, aba3 = st.tabs(["📝 Registrar", "📷 Mídias", "📅 Relatório Mensal"])
+        # Interface Operacional Completa Exclusiva dos Funcionários (2 Abas apenas)
+        aba1, aba2 = st.tabs(["📝 Registrar", "📅 Relatório Mensal"])
         
         with aba1: 
             t_ativa = st.session_state.turma 
@@ -307,80 +307,95 @@ else:
             mostrar_pocos = st.toggle("🚰 Poços Perfurados", value=False) 
             if mostrar_pocos: 
                 with st.form("form_pocos", clear_on_submit=True): 
-                    cl = st.text_input("Cliente"); ci = st.text_input("Cidade"); mt = st.text_input("Metragem"); mat = st.text_area("Material"); fun = st.text_input("Funcionários") 
+                    cl = st.text_input("Cliente")
+                    ci = st.text_input("Cidade")
+                    mt = st.text_input("Metragem")
+                    mat = st.text_area("Material")
+                    fun = st.text_input("Funcionários")
+                    
+                    st.markdown("---")
+                    st.write("**Anexar Mídias desta Obra 📷**")
+                    
+                    foto_capturada = st.file_uploader(
+                        "Opção 1: Tirar ou escolher Foto:", 
+                        type=["jpg", "jpeg", "png"], 
+                        key=f"foto_auto_{st.session_state.foto_key}"
+                    )
+                    
+                    video_gravado = st.file_uploader(
+                        "Opção 2: Filmar ou escolher Vídeo:", 
+                        type=["mp4", "mov", "avi", "3gp"], 
+                        key=f"video_auto_{st.session_state.video_key}"
+                    )
+                    
                     if st.form_submit_button("SALVAR RELATÓRIO"): 
-                        st.session_state.dados[t_ativa]["pocos"].append({"data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun}) 
-                        salvar_dados(st.session_state.dados); st.rerun()
+                        # 1. Salva os dados textuais do poço
+                        st.session_state.dados[t_ativa]["pocos"].append({
+                            "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y"), 
+                            "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), 
+                            "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun
+                        }) 
+                        
+                        nome_poco_vinculo = f"{cl} ({ci})" if (cl or ci) else "Geral / Sem Poço Específico"
+                        
+                        # 2. Processa e vincula a foto se tiver sido anexada
+                        if foto_capturada is not None:
+                            if not os.path.exists("saved_media"): os.makedirs("saved_media")
+                            nome_arquivo_foto = f"saved_media/{t_ativa}_{datetime.now(FUSO_BRASILIA).strftime('%Y%m%d_%H%M%S')}_camera.jpg"
+                            with open(nome_arquivo_foto, "wb") as f: 
+                                f.write(foto_capturada.getbuffer())
+                            st.session_state.dados[t_ativa]["midias"].append({
+                                "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), 
+                                "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
+                                "caminho": nome_arquivo_foto, "tipo": "image/jpeg", "poco": nome_poco_vinculo
+                            })
+                            st.session_state.foto_key += 1
 
-        with aba2:
-            st.subheader("📷 Gerenciamento de Mídias")
-            t_ativa = st.session_state.turma
+                        # 3. Processa e vincula o vídeo se tiver sido anexado
+                        if video_gravado is not None:
+                            if not os.path.exists("saved_media"): os.makedirs("saved_media")
+                            extensao = video_gravado.name.split(".")[-1]
+                            nome_arquivo_video = f"saved_media/{t_ativa}_{datetime.now(FUSO_BRASILIA).strftime('%Y%m%d_%H%M%S')}.{extensao}"
+                            with open(nome_arquivo_video, "wb") as f: 
+                                f.write(video_gravado.getbuffer())
+                            st.session_state.dados[t_ativa]["midias"].append({
+                                "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), 
+                                "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
+                                "caminho": nome_arquivo_video, "tipo": video_gravado.type, "poco": nome_poco_vinculo
+                            })
+                            st.session_state.video_key += 1
+                        
+                        salvar_dados(st.session_state.dados)
+                        st.session_state.msg_sucesso = "✅ Relatório e mídias salvos com sucesso!"
+                        st.rerun()
+
+                # Script HTML/JS para forçar a abertura da câmera nativa no celular
+                st.markdown("""
+                    <iframe src="about:blank" style="display:none;" onload="
+                        const doc = window.parent.document;
+                        const aplicarFiltrosCamera = () => {
+                            const inputs = doc.querySelectorAll('input[type=\"file\"]');
+                            inputs.forEach(input => {
+                                if (input.accept.includes('mp4') || input.accept.includes('video') || input.accept.includes('jpg')) {
+                                    input.setAttribute('capture', 'environment');
+                                }
+                            });
+                        };
+                        setInterval(aplicarFiltrosCamera, 800);
+                    "></iframe>
+                """, unsafe_allow_html=True)
+
+        with aba2: 
+            st.subheader("📅 Histórico Mensal") 
+            t_ativa = st.session_state.turma 
             
             if st.session_state.msg_sucesso:
                 st.success(st.session_state.msg_sucesso)
                 st.session_state.msg_sucesso = None
-
-            pocos_existentes = [f"{p['cliente']} ({p['cidade']})" for p in st.session_state.dados[t_ativa].get("pocos", [])]
-            categoria_poco_sel = st.selectbox("📍 Vincular esta mídia a qual Poço/Cliente?", ["Geral / Sem Poço Específico"] + pocos_existentes)
-            
-            st.divider()
-            st.write("**Opção 1: Tirar Foto 📸**")
-            foto_capturada = st.file_uploader("Toque abaixo para tirar ou escolher foto:", type=["jpg", "jpeg", "png"], key=f"foto_auto_{st.session_state.foto_key}")
-            
-            if foto_capturada is not None:
-                if not os.path.exists("saved_media"): os.makedirs("saved_media")
-                nome_arquivo = f"saved_media/{t_ativa}_{datetime.now(FUSO_BRASILIA).strftime('%Y%m%d_%H%M%S')}_camera.jpg"
-                with open(nome_arquivo, "wb") as f: f.write(foto_capturada.getbuffer())
                 
-                st.session_state.dados[t_ativa]["midias"].append({
-                    "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
-                    "caminho": nome_arquivo, "tipo": "image/jpeg", "poco": categoria_poco_sel
-                })
-                salvar_dados(st.session_state.dados)
-                st.session_state.foto_key += 1
-                st.session_state.msg_sucesso = "📸 Foto salva automaticamente!"
-                st.rerun()
-
-            st.divider()
-            st.write("**Opção 2: Gravar Vídeo 🎥**")
-            video_gravado = st.file_uploader("Toque abaixo para filmar ou escolher vídeo:", type=["mp4", "mov", "avi", "3gp"], key=f"video_auto_{st.session_state.video_key}")
-            
-            if video_gravado is not None:
-                if not os.path.exists("saved_media"): os.makedirs("saved_media")
-                extensao = video_gravado.name.split(".")[-1]
-                nome_arquivo = f"saved_media/{t_ativa}_{datetime.now(FUSO_BRASILIA).strftime('%Y%m%d_%H%M%S')}.{extensao}"
-                with open(nome_arquivo, "wb") as f: f.write(video_gravado.getbuffer())
-                
-                st.session_state.dados[t_ativa]["midias"].append({
-                    "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
-                    "caminho": nome_arquivo, "tipo": video_gravado.type, "poco": categoria_poco_sel
-                })
-                salvar_dados(st.session_state.dados)
-                st.session_state.video_key += 1
-                st.session_state.msg_sucesso = "🎥 Vídeo salvo automaticamente!"
-                st.rerun()
-
-            st.markdown("""
-                <iframe src="about:blank" style="display:none;" onload="
-                    const doc = window.parent.document;
-                    const aplicarFiltrosCamera = () => {
-                        const inputs = doc.querySelectorAll('input[type=\"file\"]');
-                        inputs.forEach(input => {
-                            if (input.accept.includes('mp4') || input.accept.includes('video') || input.accept.includes('jpg')) {
-                                input.setAttribute('capture', 'environment');
-                            }
-                        });
-                    };
-                    setInterval(aplicarFiltrosCamera, 800);
-                "></iframe>
-            """, unsafe_allow_html=True)
-
-        with aba3: 
-            st.subheader("📅 Histórico Mensal") 
-            target_turma = st.session_state.turma 
-            hist = st.session_state.dados[target_turma]["historico"] 
-            pocos = st.session_state.dados[target_turma].get("pocos", []) 
-            midias = st.session_state.dados[target_turma].get("midias", [])
+            hist = st.session_state.dados[t_ativa]["historico"] 
+            pocos = st.session_state.dados[t_ativa].get("pocos", []) 
+            midias = st.session_state.dados[t_ativa].get("midias", [])
             
             meses = sorted(list(set(t.get("ano_mes", datetime.now(FUSO_BRASILIA).strftime("%Y-%m")) for t in hist + pocos + midias)), reverse=True) 
             if meses: 
@@ -390,8 +405,8 @@ else:
                 with sub_f: 
                     t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
                     linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes]
-                    pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {target_turma} - {mes_sel}", linhas_pdf_fin)
-                    st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf") 
+                    pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa} - {mes_sel}", linhas_pdf_fin)
+                    st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{t_ativa}_{mes_sel}.pdf", "application/pdf") 
                     for t in reversed(t_mes): st.write(f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
                 
                 with sub_p: 
