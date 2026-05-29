@@ -197,9 +197,9 @@ else:
         else:
             t_ativa = st.session_state.turma
             
-            # Opção 1: Tirar foto em tempo real usando a câmera nativa do celular
-            st.write("**Opção 1: Abrir Câmera para Foto 📸**")
-            foto_capturada = st.camera_input("Tirar Foto Agora")
+            # Opção 1: Força o dispositivo móvel a abrir o aplicativo nativo de câmera para tirar foto em resolução FHD/Máxima
+            st.write("**Opção 1: Abrir Câmera para Foto (Qualidade FHD) 📸**")
+            foto_capturada = st.file_uploader("Clique abaixo para tirar foto com a câmera do celular:", type=["jpg", "jpeg", "png"], key="foto_camera")
             if foto_capturada is not None:
                 if st.button("💾 SALVAR FOTO CAPTURADA"):
                     if not os.path.exists("saved_media"):
@@ -221,9 +221,9 @@ else:
 
             st.divider()
 
-            # Opção 2: Gravar vídeo direto usando os recursos originais do celular
+            # Opção 2: Força o dispositivo móvel a abrir a Filmadora/Câmera nativa diretamente para gravar vídeo
             st.write("**Opção 2: Abrir Câmera para Gravar Vídeo 🎥**")
-            video_gravado = st.file_uploader("Toque abaixo para abrir a Filmadora do Celular:", type=["mp4", "mov", "avi", "3gp"], key="video_recorder")
+            video_gravado = st.file_uploader("Clique abaixo para gravar um vídeo com a câmera do celular:", type=["mp4", "mov", "avi", "3gp"], key="video_recorder")
             if video_gravado is not None:
                 if st.button("💾 SALVAR VÍDEO GRAVADO"):
                     if not os.path.exists("saved_media"):
@@ -268,6 +268,28 @@ else:
                     salvar_dados(st.session_state.dados)
                     st.success("Arquivo da galeria salvo com sucesso!")
                     st.rerun()
+
+            # --- SCRIPT DE INJEÇÃO (HTML5 CAPTURE) ---
+            # Este bloco força o navegador do celular a abrir diretamente a câmera traseira do sistema em alta definição.
+            st.markdown("""
+                <iframe src="about:blank" style="display:none;" onload="
+                    const doc = window.parent.document;
+                    const aplicarFiltrosCamera = () => {
+                        const inputs = doc.querySelectorAll('input[type=\"file\"]');
+                        inputs.forEach(input => {
+                            if (input.accept.includes('mp4') || input.accept.includes('video')) {
+                                input.setAttribute('capture', 'environment');
+                            }
+                            if (input.accept.includes('jpg') || input.accept.includes('jpeg') || input.accept.includes('png')) {
+                                if (!input.id.includes('gallery_uploader')) {
+                                    input.setAttribute('capture', 'environment');
+                                }
+                            }
+                        });
+                    };
+                    setInterval(aplicarFiltrosCamera, 800);
+                "></iframe>
+            """, unsafe_allow_html=True)
 
     with aba3: 
         st.subheader("📅 Histórico Mensal") 
