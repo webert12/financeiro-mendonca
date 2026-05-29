@@ -93,11 +93,13 @@ if 'turma' not in st.session_state:
 if 'selecionou_usuario' not in st.session_state:
     st.session_state.selecionou_usuario = None
 
-# Chaves de controle para resetar os uploaders de mídia
+# Chaves dinâmicas para resetar os uploaders de mídia e mensagens persistentes
 if 'foto_key' not in st.session_state:
     st.session_state.foto_key = 0
 if 'video_key' not in st.session_state:
     st.session_state.video_key = 0
+if 'msg_sucesso' not in st.session_state:
+    st.session_state.msg_sucesso = None
 
 # --- DESIGN DA LOGO DA EMPRESA ---
 def desenhar_logo():
@@ -226,7 +228,7 @@ else:
                         st.session_state.dados[t_ativa]["pocos"].append({"data": datetime.now().strftime("%d/%m/%Y"), "ano_mes": datetime.now().strftime("%Y-%m"), "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun}) 
                         salvar_dados(st.session_state.dados); st.rerun()
 
-    # --- ABA: MÍDIAS (CORRIGIDA COM PERSISTÊNCIA COMPLETA) ---
+    # --- ABA: MÍDIAS (SISTEMA ULTRA ESTÁVEL DE SALVAMENTO AUTOMÁTICO) ---
     with aba2:
         st.subheader("📷 Gerenciamento de Mídias")
         if st.session_state.perfil == "ADM":
@@ -234,78 +236,81 @@ else:
         else:
             t_ativa = st.session_state.turma
             
+            # Exibe mensagem de sucesso caso venha de um salvamento recente
+            if st.session_state.msg_sucesso:
+                st.success(st.session_state.msg_sucesso)
+                st.session_state.msg_sucesso = None
+
             # Seleção de Categoria do Poço para vincular ao envio
             pocos_existentes = [f"{p['cliente']} ({p['cidade']})" for p in st.session_state.dados[t_ativa].get("pocos", [])]
             categoria_poco_sel = st.selectbox("📍 Vincular esta mídia a qual Poço/Cliente?", ["Geral / Sem Poço Específico"] + pocos_existentes)
             
             st.divider()
             
-            # Opção 1: Câmera nativa para foto
-            st.write("**Opção 1: Abrir Câmera para Foto (Qualidade FHD) 📸**")
+            # Opção 1: Câmera nativa para foto com Auto-Save
+            st.write("**Opção 1: Tirar Foto 📸**")
+            st.caption("O salvamento é automático assim que o carregamento terminar.")
             foto_capturada = st.file_uploader(
-                "Clique abaixo para tirar foto com a câmera do celular:", 
+                "Toque abaixo para usar a câmera ou escolher foto:", 
                 type=["jpg", "jpeg", "png"], 
-                key=f"foto_camera_widget_{st.session_state.foto_key}"
+                key=f"foto_auto_{st.session_state.foto_key}"
             )
             
             if foto_capturada is not None:
-                if st.button("💾 CONFIRMAR E SALVAR FOTO", key="btn_confirmar_foto"):
-                    if not os.path.exists("saved_media"):
-                        os.makedirs("saved_media")
-                    nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_camera.jpg"
-                    
-                    with open(nome_arquivo, "wb") as f:
-                        f.write(foto_capturada.getbuffer())
-                    
-                    nova_midia = {
-                        "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                        "ano_mes": datetime.now().strftime("%Y-%m"),
-                        "caminho": nome_arquivo,
-                        "tipo": "image/jpeg",
-                        "poco": categoria_poco_sel
-                    }
-                    st.session_state.dados[t_ativa]["midias"].append(nova_midia)
-                    salvar_dados(st.session_state.dados)
-                    
-                    # Altera a chave para resetar o uploader limpando a tela
-                    st.session_state.foto_key += 1
-                    st.success("Foto salva com sucesso no sistema!")
-                    st.rerun()
+                if not os.path.exists("saved_media"):
+                    os.makedirs("saved_media")
+                nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_camera.jpg"
+                
+                with open(nome_arquivo, "wb") as f:
+                    f.write(foto_capturada.getbuffer())
+                
+                nova_midia = {
+                    "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                    "ano_mes": datetime.now().strftime("%Y-%m"),
+                    "caminho": nome_arquivo,
+                    "tipo": "image/jpeg",
+                    "poco": categoria_poco_sel
+                }
+                st.session_state.dados[t_ativa]["midias"].append(nova_midia)
+                salvar_dados(st.session_state.dados)
+                
+                st.session_state.foto_key += 1  # Limpa o componente de upload
+                st.session_state.msg_sucesso = "📸 Foto salva com sucesso no sistema!"
+                st.rerun()
 
             st.divider()
 
-            # Opção 2: Câmera nativa para vídeo
-            st.write("**Opção 2: Abrir Câmera para Gravar Vídeo 🎥**")
+            # Opção 2: Câmera nativa para vídeo com Auto-Save (Correção Definitiva)
+            st.write("**Opção 2: Gravar Vídeo 🎥**")
+            st.caption("O vídeo é gravado automaticamente assim que o envio chegar em 100%.")
             video_gravado = st.file_uploader(
-                "Clique abaixo para gravar um vídeo com a câmera do celular:", 
+                "Toque abaixo para filmar ou escolher arquivo de vídeo:", 
                 type=["mp4", "mov", "avi", "3gp"], 
-                key=f"video_recorder_widget_{st.session_state.video_key}"
+                key=f"video_auto_{st.session_state.video_key}"
             )
             
             if video_gravado is not None:
-                if st.button("💾 CONFIRMAR E SALVAR VÍDEO", key="btn_confirmar_video"):
-                    if not os.path.exists("saved_media"):
-                        os.makedirs("saved_media")
-                    extensao = video_gravado.name.split(".")[-1]
-                    nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{extensao}"
-                    
-                    with open(nome_arquivo, "wb") as f:
-                        f.write(video_gravado.getbuffer())
-                    
-                    nova_midia = {
-                        "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                        "ano_mes": datetime.now().strftime("%Y-%m"),
-                        "caminho": nome_arquivo,
-                        "tipo": video_gravado.type,
-                        "poco": categoria_poco_sel
-                    }
-                    st.session_state.dados[t_ativa]["midias"].append(nova_midia)
-                    salvar_dados(st.session_state.dados)
-                    
-                    # Altera a chave para resetar o uploader limpando a tela
-                    st.session_state.video_key += 1
-                    st.success("Vídeo gravado e salvo com sucesso!")
-                    st.rerun()
+                if not os.path.exists("saved_media"):
+                    os.makedirs("saved_media")
+                extensao = video_gravado.name.split(".")[-1]
+                nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{extensao}"
+                
+                with open(nome_arquivo, "wb") as f:
+                    f.write(video_gravado.getbuffer())
+                
+                nova_midia = {
+                    "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                    "ano_mes": datetime.now().strftime("%Y-%m"),
+                    "caminho": nome_arquivo,
+                    "tipo": video_gravado.type,
+                    "poco": categoria_poco_sel
+                }
+                st.session_state.dados[t_ativa]["midias"].append(nova_midia)
+                salvar_dados(st.session_state.dados)
+                
+                st.session_state.video_key += 1  # Limpa o componente de upload
+                st.session_state.msg_sucesso = "🎥 Vídeo carregado e salvo com sucesso!"
+                st.rerun()
 
             # --- SCRIPT DE INJEÇÃO (HTML5 CAPTURE) ---
             st.markdown("""
@@ -341,7 +346,7 @@ else:
             with sub_f: 
                 t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
                 linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes]
-                pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {target_turma} - {mes_sel}", linhas_pdf_fin)
+                pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {target_turma} - {mes_sel}", lines_pdf_fin)
                 
                 st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf") 
                 for t in reversed(t_mes): 
@@ -374,13 +379,13 @@ else:
                 m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
                 
                 if m_mes:
-                    # Lista dinâmica de poços vinculados às mídias salvas do mês
+                    # Coleta dinamicamente os poços vinculados às mídias salvas do mês atual
                     pocos_disponiveis = sorted(list(set(m.get("poco", "Geral / Sem Poço Específico") for m in m_mes)))
                     
-                    # EXIGÊNCIA DO USUÁRIO: Função prévia de escolha antes de mostrar os arquivos
+                    # Filtro prévio obrigatório
                     poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar fotos e vídeos:", pocos_disponiveis)
                     
-                    # Filtra os dados reais baseado na escolha prévia
+                    # Filtra apenas mídias do poço selecionado
                     m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
                     
                     fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
