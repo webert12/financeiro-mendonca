@@ -211,8 +211,16 @@ else:
                     linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes]
                     pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {target_turma} - {mes_sel}", linhas_pdf_fin)
                     st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf") 
-                    for t in reversed(t_mes): 
-                        st.write(f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
+                    
+                    # Filtro por dia para organizar o painel do ADM
+                    dias_disponiveis = sorted(list(set(t['data'][:5] for t in t_mes if 'data' in t)), reverse=True)
+                    if dias_disponiveis:
+                        dia_sel = st.selectbox("🔍 Escolha o dia para analisar custos:", dias_disponiveis, key="dia_sel_adm_custos")
+                        t_dia = [t for t in t_mes if t.get('data', '')[:5] == dia_sel]
+                        for t in reversed(t_dia): 
+                            st.write(f"💵 {t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
+                    else:
+                        st.caption("Nenhum custo registrado.")
                 
                 with sub_p: 
                     p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel] 
@@ -229,8 +237,6 @@ else:
                         ]
                         pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
-                        for p in reversed(p_mes): 
-                            st.write(f"📍 {p['data']} - {p['cliente']} ({p['cidade']})") 
                     else: 
                         st.caption("Nenhum poço encontrado.")
                 
@@ -407,7 +413,16 @@ else:
                     linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes]
                     pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa} - {mes_sel}", linhas_pdf_fin)
                     st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{t_ativa}_{mes_sel}.pdf", "application/pdf") 
-                    for t in reversed(t_mes): st.write(f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
+                    
+                    # Filtro por dia adicionado para limpar e ocultar a listagem direta
+                    dias_disponiveis = sorted(list(set(t['data'][:5] for t in t_mes if 'data' in t)), reverse=True)
+                    if dias_disponiveis:
+                        dia_sel = st.selectbox("🔍 Escolha o dia para analisar custos:", dias_disponiveis, key="dia_sel_turma_custos")
+                        t_dia = [t for t in t_mes if t.get('data', '')[:5] == dia_sel]
+                        for t in reversed(t_dia): 
+                            st.write(f"💵 {t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
+                    else:
+                        st.caption("Nenhum custo registrado.")
                 
                 with sub_p: 
                     p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel] 
@@ -420,8 +435,9 @@ else:
                         ]
                         pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
-                        for p in reversed(p_mes): st.write(f"📍 {p['data']} - {p['cliente']} ({p['cidade']})") 
-                    else: st.caption("Nenhum poço encontrado.")
+                        # Lista poluída em formato texto removida completamente daqui conforme pedido
+                    else: 
+                        st.caption("Nenhum poço encontrado.")
                 
                 with sub_m:
                     m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
