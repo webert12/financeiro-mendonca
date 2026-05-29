@@ -226,13 +226,17 @@ else:
         else:
             t_ativa = st.session_state.turma
             trans_semana = st.session_state.dados[t_ativa]["transacoes"]
-            pocos_registrados = st.session_state.dados[t_ativa].get("pocos", [])
+            
+            # CÁLCULOS CORRIGIDOS
+            total_dinheiro = sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro')
+            total_cartao = sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Cartão')
+            saldo_dinheiro = LIMITE_DINHEIRO_SEMANAL - total_dinheiro
             
             c1, c2 = st.columns(2)
-            c1.metric("💵 Dinheiro Espécie", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro'):.2f}")
-            c2.metric("💳 Cartão Acumulado", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Cartão'):.2f}")
+            c1.metric("💵 Saldo Dinheiro", f"R$ {saldo_dinheiro:.2f}")
+            c2.metric("💳 Cartão Acumulado", f"R$ {total_cartao:.2f}")
             
-            pct_consumido = min(sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro') / LIMITE_DINHEIRO_SEMANAL, 1.0) if LIMITE_DINHEIRO_SEMANAL > 0 else 0
+            pct_consumido = min(total_dinheiro / LIMITE_DINHEIRO_SEMANAL, 1.0) if LIMITE_DINHEIRO_SEMANAL > 0 else 0
             st.progress(pct_consumido)
             st.caption(f"Progresso de consumo do limite semanal ({int(pct_consumido*100)}%)")
             
