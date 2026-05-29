@@ -227,7 +227,7 @@ else:
             t_ativa = st.session_state.turma
             trans_semana = st.session_state.dados[t_ativa]["transacoes"]
             
-            # CÁLCULOS CORRIGIDOS
+            # CÁLCULOS
             total_dinheiro = sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro')
             total_cartao = sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Cartão')
             saldo_dinheiro = LIMITE_DINHEIRO_SEMANAL - total_dinheiro
@@ -257,6 +257,7 @@ else:
                     valor_input = st.text_input("Valor gasto R$")
                     if st.form_submit_button("CONFIRMAR E SALVAR LANÇAMENTO"):
                         try:
+                            # CORREÇÃO: Substitui vírgula por ponto e converte para float
                             valor_final = float(valor_input.replace(",", "."))
                             metodo_final = "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão"
                             categoria_final = f"Outros ({detalhe_texto.strip()})" if (categoria_pai == "Outros" and sub_categoria == "Escrever motivo próprio") else (sub_categoria if categoria_pai == "Outros" else categoria_pai)
@@ -266,7 +267,7 @@ else:
                             st.session_state.dados[t_ativa]["historico"].append(nova_trans)
                             salvar_dados(st.session_state.dados)
                             st.rerun()
-                        except: st.error("Erro no valor.")
+                        except: st.error("Erro no valor. Use apenas números, ex: 50.00 ou 50,00")
 
             mostrar_pocos = st.toggle("🚰 Poços Perfurados", value=False)
             if mostrar_pocos:
