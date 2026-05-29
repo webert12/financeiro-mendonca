@@ -63,6 +63,17 @@ st.markdown("""
         margin-bottom: 15px;
         border-left: 5px solid #00cfcc;
     }
+
+    .stCameraInput video {
+        border-radius: 15px;
+        width: 100%;
+    }
+
+    .stFileUploader {
+        background-color: #1e2129;
+        padding: 10px;
+        border-radius: 15px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -314,7 +325,7 @@ else:
     abas_menu = [
         "Registrar",
         "Relatório Mensal",
-        "📸 Fotos e Vídeos"
+        "📸 Capturar Mídias"
     ]
 
     if st.session_state.perfil == "ADM":
@@ -338,7 +349,6 @@ else:
             t_ativa = st.session_state.turma
             trans_semana = st.session_state.dados[t_ativa]["transacoes"]
 
-            # CÁLCULOS
             total_dinheiro = sum(
                 t['valor']
                 for t in trans_semana
@@ -544,8 +554,8 @@ else:
         )
 
         hist = st.session_state.dados[target_turma]["historico"]
-
         pocos = st.session_state.dados[target_turma].get("pocos", [])
+        lista_midias = st.session_state.dados[target_turma].get("midias", [])
 
         meses = sorted(
             list(
@@ -564,10 +574,11 @@ else:
 
             mes_sel = st.selectbox("Escolha o mês", meses)
 
-            sub_f, sub_p = st.tabs(
+            sub_f, sub_p, sub_m = st.tabs(
                 [
                     "💰 Controle de Custos",
-                    "🚰 Poços Executados"
+                    "🚰 Poços Executados",
+                    "📸 Fotos e Vídeos"
                 ]
             )
 
@@ -657,6 +668,59 @@ else:
                             f"({p.get('cidade')})"
                         )
 
+            with sub_m:
+
+                midias_mes = []
+
+                for m in lista_midias:
+                    try:
+                        data_formatada = datetime.strptime(
+                            m["data"],
+                            "%d/%m/%Y %H:%M"
+                        ).strftime("%Y-%m")
+
+                        if data_formatada == mes_sel:
+                            midias_mes.append(m)
+
+                    except:
+                        pass
+
+                if midias_mes:
+
+                    st.subheader("📂 Histórico de Fotos e Vídeos")
+
+                    for item in reversed(midias_mes):
+
+                        st.markdown(
+                            "<div class='media-card'>",
+                            unsafe_allow_html=True
+                        )
+
+                        st.write(f"📅 {item['data']}")
+                        st.write(f"📝 {item['descricao']}")
+
+                        if os.path.exists(item["arquivo"]):
+
+                            if item["tipo"] == "foto":
+                                st.image(
+                                    item["arquivo"],
+                                    use_container_width=True
+                                )
+
+                            elif item["tipo"] == "video":
+                                st.video(item["arquivo"])
+
+                        st.markdown(
+                            "</div>",
+                            unsafe_allow_html=True
+                        )
+
+                else:
+
+                    st.info(
+                        "Nenhuma foto ou vídeo encontrado neste mês."
+                    )
+
     # =========================
     # NOVA ABA DE MÍDIAS
     # =========================
@@ -672,11 +736,11 @@ else:
 
             t_ativa = st.session_state.turma
 
-            st.subheader("📸 Fotos e Vídeos da Equipe")
+            st.subheader("📸 Capturar Fotos e Vídeos")
 
             st.info(
-                "Você pode tirar fotos diretamente da câmera "
-                "ou enviar vídeos do celular."
+                "As mídias salvas aparecerão apenas "
+                "na aba de Histórico Mensal."
             )
 
             tipo_midia = st.radio(
@@ -689,121 +753,133 @@ else:
                 "Descrição da mídia"
             )
 
+            # =========================
+            # FOTO
+            # =========================
             if tipo_midia == "📷 Foto":
 
+                st.info(
+                    "Ao abrir a câmera, utilize a câmera original do celular "
+                    "para melhor qualidade."
+                )
+
                 foto = st.camera_input(
-                    "Tirar Foto"
+                    "📷 Abrir câmera",
+                    key="camera_foto"
                 )
 
                 if foto is not None:
 
-                    agora = datetime.now(TZ_BRASILIA)
+                    try:
 
-                    nome_arquivo = (
-                        f"{t_ativa}_foto_"
-                        f"{agora.strftime('%Y%m%d_%H%M%S')}.jpg"
-                    )
+                        agora = datetime.now(TZ_BRASILIA)
 
-                    caminho = os.path.join(
-                        MEDIA_DIR,
-                        nome_arquivo
-                    )
+                        nome_arquivo = (
+                            f"{t_ativa}_foto_"
+                            f"{agora.strftime('%Y%m%d_%H%M%S')}.jpg"
+                        )
 
-                    with open(caminho, "wb") as f:
-                        f.write(foto.getbuffer())
+                        caminho = os.path.join(
+                            MEDIA_DIR,
+                            nome_arquivo
+                        )
 
-                    registro = {
-                        "tipo": "foto",
-                        "arquivo": caminho,
-                        "descricao": descricao,
-                        "data": agora.strftime("%d/%m/%Y %H:%M")
-                    }
+                        imagem_bytes = foto.read()
 
-                    st.session_state.dados[t_ativa]["midias"].append(
-                        registro
-                    )
+                        with open(caminho, "wb") as f:
+                            f.write(imagem_bytes)
 
-                    salvar_dados(st.session_state.dados)
+                        registro = {
+                            "tipo": "foto",
+                            "arquivo": caminho,
+                            "descricao": descricao,
+                            "data": agora.strftime("%d/%m/%Y %H:%M")
+                        }
 
-                    st.success("Foto salva com sucesso!")
+                        st.session_state.dados[t_ativa]["midias"].append(
+                            registro
+                        )
 
+                        salvar_dados(st.session_state.dados)
+
+                        st.success("✅ Foto salva com sucesso!")
+
+                        st.image(
+                            caminho,
+                            caption="Pré-visualização",
+                            use_container_width=True
+                        )
+
+                    except Exception as e:
+
+                        st.error(
+                            f"Erro ao salvar foto: {str(e)}"
+                        )
+
+            # =========================
+            # VÍDEO
+            # =========================
             else:
 
-                video = st.file_uploader(
-                    "Enviar vídeo",
-                    type=["mp4", "mov", "avi"]
+                st.info(
+                    "Clique em gravar vídeo usando a câmera do celular."
+                )
+
+                video = st.camera_input(
+                    "🎥 Gravar Vídeo",
+                    key="camera_video"
                 )
 
                 if video is not None:
 
-                    agora = datetime.now(TZ_BRASILIA)
+                    try:
 
-                    nome_arquivo = (
-                        f"{t_ativa}_video_"
-                        f"{agora.strftime('%Y%m%d_%H%M%S')}_"
-                        f"{video.name}"
-                    )
+                        agora = datetime.now(TZ_BRASILIA)
 
-                    caminho = os.path.join(
-                        MEDIA_DIR,
-                        nome_arquivo
-                    )
+                        nome_arquivo = (
+                            f"{t_ativa}_video_"
+                            f"{agora.strftime('%Y%m%d_%H%M%S')}.mp4"
+                        )
 
-                    with open(caminho, "wb") as f:
-                        f.write(video.getbuffer())
+                        caminho = os.path.join(
+                            MEDIA_DIR,
+                            nome_arquivo
+                        )
 
-                    registro = {
-                        "tipo": "video",
-                        "arquivo": caminho,
-                        "descricao": descricao,
-                        "data": agora.strftime("%d/%m/%Y %H:%M")
-                    }
+                        video_bytes = video.read()
 
-                    st.session_state.dados[t_ativa]["midias"].append(
-                        registro
-                    )
+                        with open(caminho, "wb") as f:
+                            f.write(video_bytes)
 
-                    salvar_dados(st.session_state.dados)
+                        registro = {
+                            "tipo": "video",
+                            "arquivo": caminho,
+                            "descricao": descricao,
+                            "data": agora.strftime("%d/%m/%Y %H:%M")
+                        }
 
-                    st.success("Vídeo salvo com sucesso!")
+                        st.session_state.dados[t_ativa]["midias"].append(
+                            registro
+                        )
+
+                        salvar_dados(st.session_state.dados)
+
+                        st.success("✅ Vídeo salvo com sucesso!")
+
+                        st.video(caminho)
+
+                    except Exception as e:
+
+                        st.error(
+                            f"Erro ao salvar vídeo: {str(e)}"
+                        )
 
             st.divider()
 
-            st.subheader("📂 Histórico de Fotos e Vídeos")
-
-            lista_midias = st.session_state.dados[t_ativa].get(
-                "midias",
-                []
+            st.info(
+                "As mídias ficam disponíveis apenas "
+                "na aba 'Relatório Mensal'."
             )
-
-            if lista_midias:
-
-                for item in reversed(lista_midias):
-
-                    st.markdown(
-                        "<div class='media-card'>",
-                        unsafe_allow_html=True
-                    )
-
-                    st.write(f"📅 {item['data']}")
-                    st.write(f"📝 {item['descricao']}")
-
-                    if os.path.exists(item["arquivo"]):
-
-                        if item["tipo"] == "foto":
-                            st.image(item["arquivo"])
-
-                        elif item["tipo"] == "video":
-                            st.video(item["arquivo"])
-
-                    st.markdown(
-                        "</div>",
-                        unsafe_allow_html=True
-                    )
-
-            else:
-
-                st.info("Nenhuma mídia registrada ainda.")
 
     # =========================
     # PAINEL ADM
