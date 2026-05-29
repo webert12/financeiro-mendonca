@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import os
 from datetime import datetime
+import pytz  # Adicionado para corrigir o fuso horário
 from fpdf import FPDF
 
 # --- CONFIGURAÇÃO VISUAL ESTILO "APK" ---
@@ -54,6 +55,8 @@ st.markdown("""
 
 DATA_FILE = "gastos_dados.json"
 LIMITE_DINHEIRO_SEMANAL = 500.00
+# Define o fuso horário de Brasília
+TZ_BRASILIA = pytz.timezone('America/Sao_Paulo')
 
 # --- FUNÇÃO GERADOR DE PDF ---
 def gerar_pdf(titulo, conteudo):
@@ -257,14 +260,15 @@ else:
                     valor_input = st.text_input("Valor gasto R$")
                     if st.form_submit_button("CONFIRMAR E SALVAR LANÇAMENTO"):
                         try:
-                            # AQUI FOI FEITA A CORREÇÃO:
-                            # Substitui vírgula por ponto, remove espaços extras e converte para float
                             valor_limpo = valor_input.replace(",", ".").strip()
                             valor_final = float(valor_limpo)
                             
                             metodo_final = "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão"
                             categoria_final = f"Outros ({detalhe_texto.strip()})" if (categoria_pai == "Outros" and sub_categoria == "Escrever motivo próprio") else (sub_categoria if categoria_pai == "Outros" else categoria_pai)
-                            agora = datetime.now()
+                            
+                            # USANDO HORÁRIO DE BRASÍLIA
+                            agora = datetime.now(TZ_BRASILIA)
+                            
                             nova_trans = {"data": agora.strftime("%d/%m %H:%M"), "ano_mes": agora.strftime("%Y-%m"), "categoria": categoria_final, "metodo": metodo_final, "valor": valor_final}
                             st.session_state.dados[t_ativa]["transacoes"].append(nova_trans)
                             st.session_state.dados[t_ativa]["historico"].append(nova_trans)
@@ -277,14 +281,16 @@ else:
             if mostrar_pocos:
                 st.subheader("Relatório de Poço Concluído")
                 with st.form("form_pocos_perfurados", clear_on_submit=True):
-                    data_p = st.text_input("Data", value=datetime.now().strftime("%d/%m/%Y"))
+                    # USANDO HORÁRIO DE BRASÍLIA
+                    data_p = datetime.now(TZ_BRASILIA).strftime("%d/%m/%Y")
+                    data_input = st.text_input("Data", value=data_p)
                     cliente = st.text_input("Cliente")
                     cidade = st.text_input("Cidade")
                     metragem = st.text_input("Metragem")
                     material = st.text_area("Materiais")
                     fun = st.text_input("Funcionários")
                     if st.form_submit_button("SALVAR RELATÓRIO DO POÇO"):
-                        novo_poco = {"data": data_p, "ano_mes": datetime.now().strftime("%Y-%m"), "cliente": cliente, "cidade": cidade, "metragem": metragem, "material": material, "funcionarios": fun}
+                        novo_poco = {"data": data_input, "ano_mes": datetime.now(TZ_BRASILIA).strftime("%Y-%m"), "cliente": cliente, "cidade": cidade, "metragem": metragem, "material": material, "funcionarios": fun}
                         st.session_state.dados[t_ativa]["pocos"].append(novo_poco)
                         salvar_dados(st.session_state.dados)
                         st.rerun()
@@ -294,7 +300,7 @@ else:
         target_turma = st.session_state.turma if st.session_state.perfil == "TURMA" else st.selectbox("Selecione o colaborador", TURMAS)
         hist = st.session_state.dados[target_turma]["historico"]
         pocos = st.session_state.dados[target_turma].get("pocos", [])
-        meses = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in hist + pocos)), reverse=True)
+        meses = sorted(list(set(t.get("ano_mes", datetime.now(TZ_BRASILIA).strftime("%Y-%m")) for t in hist + pocos)), reverse=True)
         
         if meses:
             mes_sel = st.selectbox("Escolha o mês", meses)
