@@ -191,7 +191,6 @@ else:
     
     # --- LOGICA DE MENUS SEPARADOS (ADM vs FUNCIONÁRIO) ---
     if st.session_state.perfil == "ADM":
-        # Painel do ADM focado apenas em auditoria e gerenciamento global
         aba_relatorio, aba_adm = st.tabs(["📅 Relatório Mensal", "⚙️ Painel ADM"])
         
         with aba_relatorio:
@@ -208,14 +207,22 @@ else:
                 
                 with sub_f: 
                     t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
-                    linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes]
-                    pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {target_turma} - {mes_sel}", linhas_pdf_fin)
-                    st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf") 
-                    
-                    # Filtro por dia para organizar o painel do ADM
                     dias_disponiveis = sorted(list(set(t['data'][:5] for t in t_mes if 'data' in t)), reverse=True)
+                    
                     if dias_disponiveis:
-                        dia_sel = st.selectbox("🔍 Escolha o dia para analisar custos:", dias_disponiveis, key="dia_sel_adm_custos")
+                        # Seleção de múltiplos dias para montagem customizada do PDF
+                        dias_pdf_sel = st.multiselect("📄 Escolha os dias para incluir no PDF:", dias_disponiveis, default=dias_disponiveis, key="dias_pdf_adm")
+                        
+                        if dias_pdf_sel:
+                            t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
+                            linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
+                            pdf_financeiro = exportar_para_pdf(f"Custos - {target_turma} - Filtro customizado", linhas_pdf_fin)
+                            st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf")
+                        else:
+                            st.warning("Selecione ao menos 1 dia para gerar o PDF.")
+                            
+                        st.markdown("---")
+                        dia_sel = st.selectbox("🔍 Escolha o dia para analisar custos na tela:", dias_disponiveis, key="dia_sel_adm_custos")
                         t_dia = [t for t in t_mes if t.get('data', '')[:5] == dia_sel]
                         for t in reversed(t_dia): 
                             st.write(f"💵 {t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
@@ -225,15 +232,42 @@ else:
                 with sub_p: 
                     p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel] 
                     if p_mes: 
-                        sel_poco = st.selectbox("Escolha o poço para baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes], key="sel_poco_adm") 
+                        sel_poco = st.selectbox("Escolha o poço para analisar/baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes], key="sel_poco_adm") 
                         p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco) 
+                        
+                        # Exibição dos dados antes de baixar
+                        st.markdown(f"""
+                        <div style='background-color: #1e293b; padding: 15px; border-radius: 8px; border-left: 5px solid #0047AB; margin-bottom: 15px;'>
+                            <h4 style='margin-top:0;'>📋 Dados do Relatório</h4>
+                            <b>📍 Cliente:</b> {p_baixar['cliente']}<br>
+                            <b>🏙️ Cidade:</b> {p_baixar['cidade']}<br>
+                            <b>📏 Metragem Perfurada:</b> {p_baixar['metragem']} metros<br>
+                            <b>👥 Funcionários na Obra:</b> {p_baixar['funcionarios']}<br>
+                            <b>🧱 Materiais Utilizados:</b><br>{p_baixar['material']}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Função de Edição para o ADM caso necessário corrigir remotamente
+                        if st.checkbox("✏️ Corrigir/Editar este Relatório (ADM)", key="edit_mode_adm"):
+                            with st.form("form_editar_poco_adm"):
+                                novo_cl = st.text_input("Cliente", value=p_baixar['cliente'])
+                                novo_ci = st.text_input("Cidade", value=p_baixar['cidade'])
+                                novo_mt = st.text_input("Metragem", value=p_baixar['metragem'])
+                                novo_fun = st.text_input("Funcionários", value=p_baixar['funcionarios'])
+                                novo_mat = st.text_area("Material", value=p_baixar['material'])
+                                
+                                if st.form_submit_button("💾 Salvar Alterações"):
+                                    idx_original = next(i for i, p in enumerate(st.session_state.dados[target_turma]["pocos"]) if id(p) == id(p_baixar))
+                                    st.session_state.dados[target_turma]["pocos"][idx_original].update({
+                                        "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun
+                                    })
+                                    salvar_dados(st.session_state.dados)
+                                    st.success("Relatório atualizado com sucesso!")
+                                    st.rerun()
+                        
                         linhas_pdf_poco = [
-                            f"Data de Registro: {p_baixar['data']}",
-                            f"Cliente: {p_baixar['cliente']}",
-                            f"Cidade: {p_baixar['cidade']}",
-                            f"Metragem Perfurada: {p_baixar['metragem']} metros",
-                            f"Funcionarios na Obra: {p_baixar['funcionarios']}",
-                            f"Materiais Utilizados: {p_baixar['material']}"
+                            f"Data de Registro: {p_baixar['data']}", f"Cliente: {p_baixar['cliente']}", f"Cidade: {p_baixar['cidade']}",
+                            f"Metragem Perfurada: {p_baixar['metragem']} metros", f"Funcionarios na Obra: {p_baixar['funcionarios']}", f"Materiais Utilizados: {p_baixar['material']}"
                         ]
                         pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
@@ -256,7 +290,6 @@ else:
                                 for f in reversed(fotos_filtradas):
                                     st.write(f"📅 {f['data']}")
                                     if os.path.exists(f['caminho']): st.image(f['caminho'], use_container_width=True)
-                                    else: st.caption("Arquivo físico não localizado.")
                                     st.divider()
                             else: st.caption("Nenhuma foto localizada para este poço.")
                         
@@ -265,7 +298,6 @@ else:
                                 for v in reversed(videos_filtrados):
                                     st.write(f"📅 {v['data']}")
                                     if os.path.exists(v['caminho']): st.video(v['caminho'])
-                                    else: st.caption("Arquivo físico não localizado.")
                                     st.divider()
                             else: st.caption("Nenhum vídeo localizado para este poço.")
                     else:
@@ -283,7 +315,7 @@ else:
                 st.rerun()
 
     else:
-        # Interface Operacional Completa Exclusiva dos Funcionários (2 Abas apenas)
+        # Interface Operacional Completa Exclusiva dos Funcionários
         aba1, aba2 = st.tabs(["📝 Registrar", "📅 Relatório Mensal"])
         
         with aba1: 
@@ -335,7 +367,6 @@ else:
                     )
                     
                     if st.form_submit_button("SALVAR RELATÓRIO"): 
-                        # 1. Salva os dados textuais do poço
                         st.session_state.dados[t_ativa]["pocos"].append({
                             "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y"), 
                             "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), 
@@ -344,7 +375,6 @@ else:
                         
                         nome_poco_vinculo = f"{cl} ({ci})" if (cl or ci) else "Geral / Sem Poço Específico"
                         
-                        # 2. Processa e vincula a foto se tiver sido anexada
                         if foto_capturada is not None:
                             if not os.path.exists("saved_media"): os.makedirs("saved_media")
                             nome_arquivo_foto = f"saved_media/{t_ativa}_{datetime.now(FUSO_BRASILIA).strftime('%Y%m%d_%H%M%S')}_camera.jpg"
@@ -357,7 +387,6 @@ else:
                             })
                             st.session_state.foto_key += 1
 
-                        # 3. Processa e vincula o vídeo se tiver sido anexado
                         if video_gravado is not None:
                             if not os.path.exists("saved_media"): os.makedirs("saved_media")
                             extensao = video_gravado.name.split(".")[-1]
@@ -375,7 +404,6 @@ else:
                         st.session_state.msg_sucesso = "✅ Relatório e mídias salvos com sucesso!"
                         st.rerun()
 
-                # Script HTML/JS para forçar a abertura da câmera nativa no celular
                 st.markdown("""
                     <iframe src="about:blank" style="display:none;" onload="
                         const doc = window.parent.document;
@@ -410,14 +438,22 @@ else:
                 
                 with sub_f: 
                     t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
-                    linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes]
-                    pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa} - {mes_sel}", linhas_pdf_fin)
-                    st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{t_ativa}_{mes_sel}.pdf", "application/pdf") 
-                    
-                    # Filtro por dia adicionado para limpar e ocultar a listagem direta
                     dias_disponiveis = sorted(list(set(t['data'][:5] for t in t_mes if 'data' in t)), reverse=True)
+                    
                     if dias_disponiveis:
-                        dia_sel = st.selectbox("🔍 Escolha o dia para analisar custos:", dias_disponiveis, key="dia_sel_turma_custos")
+                        # Permite escolher um ou mais dias específicos para exportação em PDF
+                        dias_pdf_sel = st.multiselect("📄 Selecione os dias para incluir no PDF:", dias_disponiveis, default=dias_disponiveis, key="dias_pdf_turma")
+                        
+                        if dias_pdf_sel:
+                            t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
+                            linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
+                            pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa}", linhas_pdf_fin)
+                            st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{t_ativa}_{mes_sel}.pdf", "application/pdf") 
+                        else:
+                            st.warning("Selecione pelo menos um dia para gerar o relatório PDF.")
+                            
+                        st.markdown("---")
+                        dia_sel = st.selectbox("🔍 Escolha o dia para analisar custos na tela:", dias_disponiveis, key="dia_sel_turma_custos")
                         t_dia = [t for t in t_mes if t.get('data', '')[:5] == dia_sel]
                         for t in reversed(t_dia): 
                             st.write(f"💵 {t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
@@ -427,15 +463,46 @@ else:
                 with sub_p: 
                     p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel] 
                     if p_mes: 
-                        sel_poco = st.selectbox("Escolha o poço para baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes], key="sel_poco_turma") 
+                        sel_poco = st.selectbox("Escolha o poço para analisar/baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes], key="sel_poco_turma") 
                         p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco) 
+                        
+                        # Exibição dos dados antes de baixar na tela do funcionário
+                        st.markdown(f"""
+                        <div style='background-color: #1e293b; padding: 15px; border-radius: 8px; border-left: 5px solid #0047AB; margin-bottom: 15px;'>
+                            <h4 style='margin-top:0;'>📋 Dados Atuais do Relatório</h4>
+                            <b>📍 Cliente:</b> {p_baixar['cliente']}<br>
+                            <b>🏙️ Cidade:</b> {p_baixar['cidade']}<br>
+                            <b>📏 Metragem Perfurada:</b> {p_baixar['metragem']} metros<br>
+                            <b>👥 Funcionários na Obra:</b> {p_baixar['funcionarios']}<br>
+                            <b>🧱 Materiais Utilizados:</b><br>{p_baixar['material']}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Função integrada de Edição/Correção de Erros
+                        if st.checkbox("✏️ Editar este Relatório", key="edit_mode_turma"):
+                            with st.form("form_editar_poco_turma"):
+                                novo_cl = st.text_input("Cliente", value=p_baixar['cliente'])
+                                novo_ci = st.text_input("Cidade", value=p_baixar['cidade'])
+                                novo_mt = st.text_input("Metragem", value=p_baixar['metragem'])
+                                novo_fun = st.text_input("Funcionários", value=p_baixar['funcionarios'])
+                                novo_mat = st.text_area("Material", value=p_baixar['material'])
+                                
+                                if st.form_submit_button("💾 Salvar Alterações"):
+                                    # Localiza com precisão cirúrgica na lista raiz e atualiza o item correspondente
+                                    idx_original = next(i for i, p in enumerate(st.session_state.dados[t_ativa]["pocos"]) if id(p) == id(p_baixar))
+                                    st.session_state.dados[t_ativa]["pocos"][idx_original].update({
+                                        "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun
+                                    })
+                                    salvar_dados(st.session_state.dados)
+                                    st.success("Relatório corrigido com sucesso!")
+                                    st.rerun()
+                        
                         linhas_pdf_poco = [
                             f"Data de Registro: {p_baixar['data']}", f"Cliente: {p_baixar['cliente']}", f"Cidade: {p_baixar['cidade']}",
                             f"Metragem Perfurada: {p_baixar['metragem']} metros", f"Funcionarios na Obra: {p_baixar['funcionarios']}", f"Materiais Utilizados: {p_baixar['material']}"
                         ]
                         pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
-                        # Lista poluída em formato texto removida completamente daqui conforme pedido
                     else: 
                         st.caption("Nenhum poço encontrado.")
                 
