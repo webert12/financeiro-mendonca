@@ -234,11 +234,13 @@ else:
             
             st.divider()
             
-            # Opção 1: Câmera nativa para foto
+            # Opção 1: Câmera nativa para foto dentro de Formulário Seguro
             st.write("**Opção 1: Abrir Câmera para Foto (Qualidade FHD) 📸**")
-            foto_capturada = st.file_uploader("Clique abaixo para tirar foto com a câmera do celular:", type=["jpg", "jpeg", "png"], key="foto_camera")
-            if foto_capturada is not None:
-                if st.button("💾 SALVAR FOTO CAPTURADA"):
+            with st.form("form_foto_secure", clear_on_submit=True):
+                foto_capturada = st.file_uploader("Clique abaixo para tirar foto com a câmera do celular:", type=["jpg", "jpeg", "png"], key="foto_camera")
+                bt_salvar_foto = st.form_submit_button("💾 SALVAR FOTO CAPTURADA")
+                
+                if bt_salvar_foto and foto_capturada is not None:
                     if not os.path.exists("saved_media"):
                         os.makedirs("saved_media")
                     nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_camera.jpg"
@@ -259,11 +261,13 @@ else:
 
             st.divider()
 
-            # Opção 2: Câmera nativa para vídeo
+            # Opção 2: Câmera nativa para vídeo dentro de Formulário Seguro
             st.write("**Opção 2: Abrir Câmera para Gravar Vídeo 🎥**")
-            video_gravado = st.file_uploader("Clique abaixo para gravar um vídeo com a câmera do celular:", type=["mp4", "mov", "avi", "3gp"], key="video_recorder")
-            if video_gravado is not None:
-                if st.button("💾 SALVAR VÍDEO GRAVADO"):
+            with st.form("form_video_secure", clear_on_submit=True):
+                video_gravado = st.file_uploader("Clique abaixo para gravar um vídeo com a câmera do celular:", type=["mp4", "mov", "avi", "3gp"], key="video_recorder")
+                bt_salvar_video = st.form_submit_button("💾 SALVAR VÍDEO GRAVADO")
+                
+                if bt_salvar_video and video_gravado is not None:
                     if not os.path.exists("saved_media"):
                         os.makedirs("saved_media")
                     extensao = video_gravado.name.split(".")[-1]
@@ -345,47 +349,53 @@ else:
                 else: 
                     st.caption("Nenhum poço encontrado.")
             
-            # Sub-aba organizada e oculta por tipos e categorias
+            # Sub-aba organizada e oculta por Poço -> Tipo (Foto/Vídeo)
             with sub_m:
                 m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
                 
-                # Divisão estruturada das mídias
-                fotos_mes = [m for m in m_mes if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
-                videos_mes = [m for m in m_mes if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
-                
-                # Função Oculta 1: Fotos
-                with st.expander("📸 FOTOS SALVAS"):
-                    if fotos_mes:
-                        categorias_fotos = set(f.get("poco", "Geral / Sem Poço Específico") for f in fotos_mes)
-                        for cat in categorias_fotos:
-                            st.markdown(f"#### 📁 Categoria Poço: {cat}")
-                            fotos_filtradas = [f for f in fotos_mes if f.get("poco", "Geral / Sem Poço Específico") == cat]
+                if m_mes:
+                    # Coleta a lista de poços que possuem alguma mídia salva neste mês
+                    pocos_disponiveis = sorted(list(set(m.get("poco", "Geral / Sem Poço Específico") for m in m_mes)))
+                    
+                    # Nova Função Prévia: Escolha do Poço
+                    poco_selecionado = st.selectbox("🔍 Escolha o Poço para filtrar as mídias:", pocos_disponiveis)
+                    
+                    # Filtra o array geral deixando apenas o poço selecionado
+                    m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
+                    
+                    # Separação interna por extensão/tipo
+                    fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                    videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                    
+                    st.markdown(f"### 📁 Mídias de: *{poco_selecionado}*")
+                    
+                    # Função Oculta 1: Fotos do poço selecionado
+                    with st.expander("📸 FOTOS SALVAS"):
+                        if fotos_filtradas:
                             for f in reversed(fotos_filtradas):
-                                st.write(f"📅 {f['data']}")
+                                st.write(f"📅 Enviado em: {f['data']}")
                                 if os.path.exists(f['caminho']):
                                     st.image(f['caminho'], use_container_width=True)
                                 else:
                                     st.caption("Arquivo físico não localizado.")
                                 st.divider()
-                    else:
-                        st.caption("Nenhuma foto registrada para este mês.")
-                
-                # Função Oculta 2: Vídeos
-                with st.expander("🎥 VÍDEOS SALVOS"):
-                    if videos_mes:
-                        categorias_videos = set(v.get("poco", "Geral / Sem Poço Específico") for v in videos_mes)
-                        for cat in categorias_videos:
-                            st.markdown(f"#### 📁 Categoria Poço: {cat}")
-                            videos_filtrados = [v for v in videos_mes if v.get("poco", "Geral / Sem Poço Específico") == cat]
+                        else:
+                            st.caption("Nenhuma foto cadastrada para este poço.")
+                    
+                    # Função Oculta 2: Vídeos do poço selecionado
+                    with st.expander("🎥 VÍDEOS SALVOS"):
+                        if videos_filtrados:
                             for v in reversed(videos_filtrados):
-                                st.write(f"📅 {v['data']}")
+                                st.write(f"📅 Enviado em: {v['data']}")
                                 if os.path.exists(v['caminho']):
                                     st.video(v['caminho'])
                                 else:
                                     st.caption("Arquivo físico não localizado.")
                                 st.divider()
-                    else:
-                        st.caption("Nenhum vídeo registrado para este mês.")
+                        else:
+                            st.caption("Nenhum vídeo cadastrado para este poço.")
+                else:
+                    st.caption("Nenhuma mídia registrada para este colaborador neste mês.")
         else:
             st.caption("Nenhum histórico encontrado.")
 
