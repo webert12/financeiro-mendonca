@@ -244,31 +244,6 @@ else:
                     st.success("Vídeo gravado com sucesso!")
                     st.rerun()
 
-            st.divider()
-
-            # Opção 3: Enviar arquivo existente da galeria do dispositivo
-            st.write("**Opção 3: Enviar Arquivo da Galeria 📂**")
-            arquivo_enviado = st.file_uploader("Escolher foto ou vídeo existente:", type=["png", "jpg", "jpeg", "mp4", "mov"], key="gallery_uploader")
-            if arquivo_enviado is not None:
-                if st.button("💾 SALVAR ARQUIVO DA GALERIA"):
-                    if not os.path.exists("saved_media"):
-                        os.makedirs("saved_media")
-                    extensao = arquivo_enviado.name.split(".")[-1]
-                    nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{extensao}"
-                    with open(nome_arquivo, "wb") as f:
-                        f.write(arquivo_enviado.getbuffer())
-                    
-                    nova_midia = {
-                        "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                        "ano_mes": datetime.now().strftime("%Y-%m"),
-                        "caminho": nome_arquivo,
-                        "tipo": arquivo_enviado.type
-                    }
-                    st.session_state.dados[t_ativa]["midias"].append(nova_midia)
-                    salvar_dados(st.session_state.dados)
-                    st.success("Arquivo da galeria salvo com sucesso!")
-                    st.rerun()
-
             # --- SCRIPT DE INJEÇÃO (HTML5 CAPTURE) ---
             # Este bloco força o navegador do celular a abrir diretamente a câmera traseira do sistema em alta definição.
             st.markdown("""
@@ -281,9 +256,7 @@ else:
                                 input.setAttribute('capture', 'environment');
                             }
                             if (input.accept.includes('jpg') || input.accept.includes('jpeg') || input.accept.includes('png')) {
-                                if (!input.id.includes('gallery_uploader')) {
-                                    input.setAttribute('capture', 'environment');
-                                }
+                                input.setAttribute('capture', 'environment');
                             }
                         });
                     };
