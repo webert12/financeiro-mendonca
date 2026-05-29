@@ -146,7 +146,7 @@ else:
     
     desenhar_logo()
     
-    # Atualização das Abas para inclusão de Mídias
+    # Abas principais do menu
     abas_menu = ["Registrar", "Mídias", "Relatório Mensal"]
     if st.session_state.perfil == "ADM": 
         abas_menu.append("Painel ADM") 
@@ -160,9 +160,15 @@ else:
             t_ativa = st.session_state.turma 
             trans_semana = st.session_state.dados[t_ativa]["transacoes"] 
             pocos_registrados = st.session_state.dados[t_ativa].get("pocos", []) 
+            
+            # --- CORREÇÃO DO SALDO DO DINHEIRO (SUBTRAI CONFORME GASTA) ---
+            total_gasto_dinheiro = sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro')
+            saldo_restante_dinheiro = LIMITE_DINHEIRO_SEMANAL - total_gasto_dinheiro
+            
             c1, c2 = st.columns(2) 
-            c1.metric("💵 Dinheiro", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro'):.2f}") 
-            c2.metric("💳 Cartão", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Cartão'):.2f}") 
+            c1.metric("💵 Saldo Restante", f"R$ {saldo_restante_dinheiro:.2f}") 
+            c2.metric("💳 Acumulado Cartão", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Cartão'):.2f}") 
+            
             mostrar_painel = st.toggle("📝 Registrar Despesas", value=False) 
             if mostrar_painel: 
                 with st.form("form_final_envio", clear_on_submit=True): 
@@ -183,7 +189,7 @@ else:
                         st.session_state.dados[t_ativa]["pocos"].append({"data": datetime.now().strftime("%d/%m/%Y"), "ano_mes": datetime.now().strftime("%Y-%m"), "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun}) 
                         salvar_dados(st.session_state.dados); st.rerun()
 
-    # --- NOVA ABA: MÍDIAS (CÂMERA ORIGINAL / UPLOAD) ---
+    # --- ABA: MÍDIAS (CÂMERA DIRETA E ENVIOS) ---
     with aba2:
         st.subheader("📷 Gerenciamento de Mídias")
         if st.session_state.perfil == "ADM":
@@ -192,10 +198,10 @@ else:
             t_ativa = st.session_state.turma
             
             # Opção 1: Tirar foto em tempo real usando a câmera nativa do celular
-            st.write("**Opção 1: Tirar foto agora**")
-            foto_capturada = st.camera_input("Capturar Foto")
+            st.write("**Opção 1: Abrir Câmera para Foto 📸**")
+            foto_capturada = st.camera_input("Tirar Foto Agora")
             if foto_capturada is not None:
-                if st.button("💾 SALVAR FOTO DA CÂMERA"):
+                if st.button("💾 SALVAR FOTO CAPTURADA"):
                     if not os.path.exists("saved_media"):
                         os.makedirs("saved_media")
                     nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_camera.jpg"
@@ -210,16 +216,41 @@ else:
                     }
                     st.session_state.dados[t_ativa]["midias"].append(nova_midia)
                     salvar_dados(st.session_state.dados)
-                    st.success("Foto da câmera salva com sucesso!")
+                    st.success("Foto salva com sucesso!")
                     st.rerun()
 
             st.divider()
 
-            # Opção 2: Gravar vídeo / Enviar arquivo existente usando os recursos originais do dispositivo
-            st.write("**Opção 2: Gravar vídeo ou escolher da Galeria**")
-            arquivo_enviado = st.file_uploader("Selecione ou Grave uma Mídia", type=["png", "jpg", "jpeg", "mp4", "mov", "avi"])
+            # Opção 2: Gravar vídeo direto usando os recursos originais do celular
+            st.write("**Opção 2: Abrir Câmera para Gravar Vídeo 🎥**")
+            video_gravado = st.file_uploader("Toque abaixo para abrir a Filmadora do Celular:", type=["mp4", "mov", "avi", "3gp"], key="video_recorder")
+            if video_gravado is not None:
+                if st.button("💾 SALVAR VÍDEO GRAVADO"):
+                    if not os.path.exists("saved_media"):
+                        os.makedirs("saved_media")
+                    extensao = video_gravado.name.split(".")[-1]
+                    nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{extensao}"
+                    with open(nome_arquivo, "wb") as f:
+                        f.write(video_gravado.getbuffer())
+                    
+                    nova_midia = {
+                        "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
+                        "ano_mes": datetime.now().strftime("%Y-%m"),
+                        "caminho": nome_arquivo,
+                        "tipo": video_gravado.type
+                    }
+                    st.session_state.dados[t_ativa]["midias"].append(nova_midia)
+                    salvar_dados(st.session_state.dados)
+                    st.success("Vídeo gravado com sucesso!")
+                    st.rerun()
+
+            st.divider()
+
+            # Opção 3: Enviar arquivo existente da galeria do dispositivo
+            st.write("**Opção 3: Enviar Arquivo da Galeria 📂**")
+            arquivo_enviado = st.file_uploader("Escolher foto ou vídeo existente:", type=["png", "jpg", "jpeg", "mp4", "mov"], key="gallery_uploader")
             if arquivo_enviado is not None:
-                if st.button("💾 SALVAR MÍDIA ENVIADA"):
+                if st.button("💾 SALVAR ARQUIVO DA GALERIA"):
                     if not os.path.exists("saved_media"):
                         os.makedirs("saved_media")
                     extensao = arquivo_enviado.name.split(".")[-1]
@@ -235,7 +266,7 @@ else:
                     }
                     st.session_state.dados[t_ativa]["midias"].append(nova_midia)
                     salvar_dados(st.session_state.dados)
-                    st.success("Mídia salva com sucesso!")
+                    st.success("Arquivo da galeria salvo com sucesso!")
                     st.rerun()
 
     with aba3: 
@@ -267,14 +298,14 @@ else:
                 else: 
                     st.caption("Nenhum poço encontrado.")
             
-            # Sub-aba exclusiva de Mídias vinculada ao histórico mensal do respectivo funcionário
+            # Sub-aba exclusiva de Mídias vinculada ao histórico mensal do funcionário selecionado
             with sub_m:
                 m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
                 if m_mes:
                     for m in reversed(m_mes):
                         st.write(f"📅 Enviado em: {m['data']}")
                         if os.path.exists(m['caminho']):
-                            if "video" in m['tipo'] or m['caminho'].endswith(('.mp4', '.mov', '.avi')):
+                            if "video" in m['tipo'] or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp')):
                                 st.video(m['caminho'])
                             else:
                                 st.image(m['caminho'], use_container_width=True)
