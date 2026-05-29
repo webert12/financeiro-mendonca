@@ -120,7 +120,6 @@ if st.session_state.perfil is None:
     if st.session_state.selecionou_usuario is None:
         st.write("Identifique-se para entrar no aplicativo:")
         
-        # Botão principal limpo que oculta tudo
         if st.button("🔐 ACESSAR SISTEMA"):
             st.session_state.selecionou_usuario = "FUNCIONARIO_FORM"
             st.rerun()
@@ -130,7 +129,6 @@ if st.session_state.perfil is None:
             st.session_state.selecionou_usuario = "ADM_SENHA"
             st.rerun()
             
-    # Formulário de login manual para os funcionários (Ocultando a lista de nomes)
     elif st.session_state.selecionou_usuario == "FUNCIONARIO_FORM":
         st.subheader("Login de Colaborador")
         usuario_digitado = st.text_input("Digite seu Nome (Usuário)")
@@ -142,7 +140,6 @@ if st.session_state.perfil is None:
             st.rerun()
             
         if c_entrar.button("Entrar"):
-            # Validação se o usuário existe nas chaves e se a senha está correta
             if usuario_digitado in CREDENCIAIS and usuario_digitado != "ADM":
                 if senha_digitada == CREDENCIAIS[usuario_digitado]:
                     st.session_state.perfil = "TURMA"
@@ -152,9 +149,8 @@ if st.session_state.perfil is None:
                 else:
                     st.error("Senha incorreta! Tente novamente.")
             else:
-                st.error("Usuário não encontrado. Verifique se escreveu o nome corretamente.")
+                st.error("Usuário não encontrado.")
 
-    # Formulário de verificação do ADM corporativo
     elif st.session_state.selecionou_usuario == "ADM_SENHA":
         st.write("Digite a senha master para o perfil: **ADM**")
         senha_adm = st.text_input("Senha ADM", type="password")
@@ -167,16 +163,13 @@ if st.session_state.perfil is None:
         if c_entrar.button("Entrar como ADM"):
             if senha_adm == CREDENCIAIS["ADM"]:
                 st.session_state.perfil = "ADM"
-                st.session_state.selecionou_usuario = "ADM_MONITORAMENTO" # Mantém os botões ativos só aqui dentro
+                st.session_state.selecionou_usuario = "ADM_MONITORAMENTO"
                 st.rerun()
             else:
                 st.error("Senha de Administrador incorreta!")
 
-    # Painel exclusivo de monitoramento visual do ADM na raiz do login (apenas se ele quiser selecionar alguém para ver direto)
     elif st.session_state.selecionou_usuario == "ADM_MONITORAMENTO":
         st.subheader("Painel de Monitoramento (ADM)")
-        st.write("Selecione uma das equipes abaixo para auditar ou clique em 'Entrar no Panel Geral':")
-        
         col1, col2 = st.columns(2)
         for idx, t in enumerate(TURMAS):
             c = col1 if idx % 2 == 0 else col2
@@ -193,7 +186,6 @@ if st.session_state.perfil is None:
 
 # --- INTERFACE PRINCIPAL OPERACIONAL ---
 else:
-    # Top Bar do App
     c_status, c_sair = st.columns([3, 1])
     with c_status:
         identificacao = st.session_state.turma if st.session_state.perfil == "TURMA" else "Gestor Geral (ADM)"
@@ -207,204 +199,75 @@ else:
             
     desenhar_logo()
 
-    # Separação de menus baseada no perfil logado
     abas_menu = ["Registrar", "Relatório Mensal"]
     if st.session_state.perfil == "ADM":
         abas_menu.append("Painel ADM")
         
     aba1, aba2, *aba3 = st.tabs(abas_menu)
 
-    # --- ABA 1: REGISTRO DE GASTOS E PRODUÇÃO ---
     with aba1:
         if st.session_state.perfil == "ADM":
-            st.warning("O perfil Administrador serve apenas para monitoramento corporativo. Faça login com o nome de um colaborador para registrar dados de campo.")
+            st.warning("O perfil Administrador serve apenas para monitoramento.")
         else:
             t_ativa = st.session_state.turma
             trans_semana = st.session_state.dados[t_ativa]["transacoes"]
             pocos_registrados = st.session_state.dados[t_ativa].get("pocos", [])
             
-            # Cálculos de consumo da semana
-            total_dinheiro = sum(t["valor"] for t in trans_semana if t.get("metodo") == "Dinheiro")
-            total_cartao = sum(t["valor"] for t in trans_semana if t.get("metodo") == "Cartão")
-            restante_din = LIMITE_DINHEIRO_SEMANAL - total_dinheiro
-            
-            # Métricas em bloco (estilo app)
             c1, c2 = st.columns(2)
-            c1.metric("💵 Dinheiro Espécie", f"R$ {total_dinheiro:.2f}", f"Restante: R$ {restante_din:.2f}")
-            c2.metric("💳 Cartão Acumulado", f"R$ {total_cartao:.2f}")
+            c1.metric("💵 Dinheiro", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro'):.2f}")
+            c2.metric("💳 Cartão", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Cartão'):.2f}")
             
-            # Barra de progresso visual do dinheiro
-            pct_consumido = min(total_dinheiro / LIMITE_DINHEIRO_SEMANAL, 1.0) if LIMITE_DINHEIRO_SEMANAL > 0 else 0
-            st.progress(pct_consumido)
-            st.caption(f"Progresso de consumo do limite semanal ({int(pct_consumido*100)}%)")
-            
-            st.divider()
-            
-            # --- ÁREA 1 OCULTA: REGISTRO DE DESPESAS ---
             mostrar_painel = st.toggle("📝 Registrar Despesas", value=False)
             if mostrar_painel:
-                st.subheader("Nova Despesa")
-                
-                categoria_pai = st.selectbox(
-                    "Selecione o que foi gasto", 
-                    ["Café da Manhã", "Café da tarde", "Almoço", "Jantar", "Outros"]
-                )
-                
-                sub_categoria = "Nenhum"
-                detalhe_texto = ""
-                
-                if categoria_pai == "Outros":
-                    st.markdown("⬇️ **Selecione o tipo de despesa extra:**")
-                    sub_categoria = st.radio("Subcategoria", ["Mecânica", "Pedágio", "Transportes", "Escrever motivo próprio"], horizontal=True)
-                    if sub_categoria == "Escrever motivo próprio":
-                        detalhe_texto = st.text_input("Escreva detalhadamente o que foi gasto:")
-
                 with st.form("form_final_envio", clear_on_submit=True):
-                    opcao_pgto = st.radio("Qual foi o método de pagamento?", ["💵 Dinheiro em Espécie", "💳 Cartão de Crédito"], horizontal=True)
-                    valor_input = st.text_input("Valor gasto R$ (Exemplo: 25,50)")
-                    
-                    enviado = st.form_submit_button("CONFIRMAR E SALVAR LANÇAMENTO")
-                    
-                    if enviado:
-                        try:
-                            valor_final = float(valor_input.replace(",", "."))
-                            if valor_final <= 0:
-                                st.error("Insira um valor maior que zero.")
-                            else:
-                                metodo_final = "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão"
-                                agora = datetime.now()
-                                
-                                if categoria_pai == "Outros":
-                                    if sub_categoria == "Escrever motivo próprio" and detalhe_texto.strip() != "":
-                                        categoria_final = f"Outros ({detalhe_texto.strip()})"
-                                    else:
-                                        categoria_final = f"{sub_categoria}"
-                                else:
-                                    categoria_final = categoria_pai
-                                
-                                nova_transacao = {
-                                    "data": agora.strftime("%d/%m %H:%M"),
-                                    "ano_mes": agora.strftime("%Y-%m"),
-                                    "categoria": categoria_final,
-                                    "metodo": metodo_final,
-                                    "valor": valor_final
-                                }
-                                
-                                st.session_state.dados[t_ativa]["transacoes"].append(nova_transacao)
-                                st.session_state.dados[t_ativa]["historico"].append(nova_transacao)
-                                salvar_dados(st.session_state.dados)
-                                st.success("✓ Gasto registrado com sucesso!")
-                                st.rerun()
-                        except ValueError:
-                            st.error("Entrada inválida. Digite apenas números no campo de valor.")
+                    cat = st.selectbox("Categoria", ["Café da Manhã", "Almoço", "Outros"])
+                    opcao_pgto = st.radio("Método de Pagamento", ["💵 Dinheiro", "💳 Cartão"], horizontal=True)
+                    valor_input = st.text_input("Valor R$")
+                    if st.form_submit_button("SALVAR"):
+                        valor_final = float(valor_input.replace(",", "."))
+                        novo_trans = {"data": datetime.now().strftime("%d/%m %H:%M"), "ano_mes": datetime.now().strftime("%Y-%m"), "categoria": cat, "metodo": "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão", "valor": valor_final}
+                        st.session_state.dados[t_ativa]["transacoes"].append(novo_trans)
+                        st.session_state.dados[t_ativa]["historico"].append(novo_trans)
+                        salvar_dados(st.session_state.dados); st.rerun()
 
-                st.divider()
-                st.write("**Gastos Recentes da Semana Atual:**")
-                if trans_semana:
-                    for t in reversed(trans_semana[-5:]):
-                        icone = "💵" if t["metodo"] == "Dinheiro" else "💳"
-                        st.markdown(f"{icone} **{t['data']}** - {t['categoria']} - `R$ {t['valor']:.2f}`")
-                else:
-                    st.caption("Nenhum gasto registrado nesta semana.")
-
-            # --- ÁREA 2 OCULTA: POÇOS PERFURADOS ---
             mostrar_pocos = st.toggle("🚰 Poços Perfurados", value=False)
             if mostrar_pocos:
-                st.subheader("Relatório de Poço Concluído")
-                
-                with st.form("form_pocos_perfurados", clear_on_submit=True):
-                    data_poco = st.text_input("Data da conclusão (dia/mês/ano)", value=datetime.now().strftime("%d/%m/%Y"))
-                    cliente_poco = st.text_input("Nome do Cliente / Empresa")
-                    cidade_poco = st.text_input("Cidade onde o poço foi feito")
-                    metragem_poco = st.text_input("Metragem total finalizada (Ex: 85 metros)")
-                    material_poco = st.text_area("Materiais de tubulação utilizados no poço")
-                    funcionarios_poco = st.text_input("Funcionários que trabalharam neste poço (Separe por vírgula)")
-                    
-                    enviar_poco = st.form_submit_button("SALVAR RELATÓRIO DO POÇO")
-                    
-                    if enviar_poco:
-                        if not cliente_poco or not cidade_poco or not metragem_poco or not material_poco or not funcionarios_poco:
-                            st.error("Por favor, preencha todos os campos do formulário antes de salvar.")
-                        else:
-                            novo_poco = {
-                                "data": data_poco,
-                                "ano_mes": datetime.now().strftime("%Y-%m"),
-                                "cliente": cliente_poco,
-                                "cidade": cidade_poco,
-                                "metragem": metragem_poco,
-                                "material": material_poco,
-                                "funcionarios": funcionarios_poco
-                            }
-                            if "pocos" not in st.session_state.dados[t_ativa]:
-                                st.session_state.dados[t_ativa]["pocos"] = []
-                                
-                            st.session_state.dados[t_ativa]["pocos"].append(novo_poco)
-                            salvar_dados(st.session_state.dados)
-                            st.success("✓ Relatório do poço arquivado com sucesso!")
-                            st.rerun()
-                
-                st.divider()
-                st.write("**Histórico de Poços Feitos por Você:**")
-                if pocos_registrados:
-                    for idx, p in enumerate(reversed(pocos_registrados)):
-                        cliente_str = p.get('cliente', 'Não informado')
-                        with st.expander(f"📍 {p['data']} - {cliente_str} ({p['cidade']})"):
-                            st.write(f"**Metragem:** {p['metragem']}")
-                            st.write(f"**Equipe de Trabalho:** {p.get('funcionarios', 'Não informada')}")
-                            st.write(f"**Material Utilizado:**\n{p['material']}")
-                else:
-                    st.caption("Nenhum poço registrado nesta conta.")
+                with st.form("form_pocos", clear_on_submit=True):
+                    cl = st.text_input("Cliente"); ci = st.text_input("Cidade"); mt = st.text_input("Metragem"); mat = st.text_area("Material"); fun = st.text_input("Funcionários")
+                    if st.form_submit_button("SALVAR RELATÓRIO"):
+                        st.session_state.dados[t_ativa]["pocos"].append({"data": datetime.now().strftime("%d/%m/%Y"), "ano_mes": datetime.now().strftime("%Y-%m"), "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun})
+                        salvar_dados(st.session_state.dados); st.rerun()
 
-    # --- ABA 2: HISTÓRICO MENSAL ARQUIVADO (VISÃO DE RELATÓRIO) ---
     with aba2:
         st.subheader("📅 Histórico Mensal")
+        target_turma = st.session_state.turma if st.session_state.perfil == "TURMA" else st.selectbox("Selecione o Colaborador", TURMAS)
         
-        target_turma = st.session_state.turma
-        if st.session_state.perfil == "ADM":
-            target_turma = st.selectbox("Selecione o colaborador para referência", TURMAS)
-            
-        historico_alvo = st.session_state.dados[target_turma]["historico"]
-        pocos_alvo = st.session_state.dados[target_turma].get("pocos", [])
-        meses_disponiveis = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in historico_alvo + pocos_alvo)), reverse=True)
+        hist = st.session_state.dados[target_turma]["historico"]
+        pocos = st.session_state.dados[target_turma].get("pocos", [])
+        meses = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in hist + pocos)), reverse=True)
         
-        if meses_disponiveis:
-            mes_sel = st.selectbox("Escolha o mês de referência", meses_disponiveis)
+        if meses:
+            mes_sel = st.selectbox("Escolha o mês", meses)
+            sub_f, sub_p = st.tabs(["💰 Custos", "🚰 Poços"])
             
-            sub_aba_financeiro, sub_aba_producao = st.tabs(["💰 Controle de Custos", "🚰 Poços Executados"])
-            
-            with sub_aba_financeiro:
-                transacoes_mes = [t for t in historico_alvo if t.get("ano_mes", "") == mes_sel]
-                tot_din_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Dinheiro")
-                tot_car_mes = sum(t["valor"] for t in transacoes_mes if t.get("metodo") == "Cartão")
-                
-                st.info(f"💰 **Total Período:** 💵 Dinheiro: R$ {tot_din_mes:.2f} | 💳 Cartão: R$ {tot_car_mes:.2f}")
-                for t in reversed(transacoes_mes):
-                    icone = "💵" if t["metodo"] == "Dinheiro" else "💳"
-                    st.markdown(f"{icone} **{t['data']}** - {t['categoria']} - `R$ {t['valor']:.2f}`")
-                    
-            with sub_aba_producao:
-                pocos_mes = [p for p in pocos_alvo if p.get("ano_mes", "") == mes_sel]
-                if pocos_mes:
-                    for p in reversed(pocos_mes):
-                        st.markdown(f"🟩 **Data:** {p['data']} | **Cliente:** {p.get('cliente', 'Não informado')}")
-                        st.markdown(f"📍 **Local:** {p['cidade']} | **Metragem:** {p['metragem']}")
-                        st.markdown(f"👥 **Trabalhadores:** {p.get('funcionarios', 'Não informada')}")
-                        st.caption(f"📦 **Materiais aplicados:** {p['material']}")
-                        st.divider()
-                else:
-                    st.caption("Nenhum poço registrado por esta equipe no mês selecionado.")
-        else:
-            st.write("Nenhum dado permanente arquivado nesta conta.")
+            with sub_f:
+                t_mes = [t for t in hist if t.get("ano_mes") == mes_sel]
+                resumo_fin = f"Relatório Financeiro - {target_turma} - {mes_sel}\n\n" + "\n".join([f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes])
+                st.download_button("📥 Baixar Relatório Financeiro", resumo_fin, f"financeiro_{target_turma}_{mes_sel}.txt")
+                for t in reversed(t_mes): st.write(f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}")
 
-    # --- ABA 3: PAINEL DE CONTROLE ADM (CENTRAL GLOBAL) ---
+            with sub_p:
+                p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel]
+                if p_mes:
+                    sel_poco = st.selectbox("Escolha o poço para baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes])
+                    p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco)
+                    resumo_poco = f"RELATÓRIO DE POÇO\nData: {p_baixar['data']}\nCliente: {p_baixar['cliente']}\nCidade: {p_baixar['cidade']}\nMetragem: {p_baixar['metragem']}\nFuncionários: {p_baixar['funcionarios']}\nMaterial: {p_baixar['material']}"
+                    st.download_button("📥 Baixar este Poço (PDF/TXT)", resumo_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.txt")
+                    for p in reversed(p_mes): st.write(f"📍 {p['data']} - {p['cliente']} ({p['cidade']})")
+                else: st.caption("Nenhum poço encontrado.")
+
     if st.session_state.perfil == "ADM":
         with aba3[0]:
-            st.subheader("🚨 Ferramentas de Gestão Central")
-            st.write("Esta ação zera instantaneamente o balanço e as barras semanais de todos os colaboradores para iniciar o controle da nova semana. O histórico acumulado do mês NÃO é modificado.")
-            
-            if st.button("RESETAR GASTOS DA SEMANA (FECHAR SEMANA)"):
-                for t in TURMAS:
-                    st.session_state.dados[t]["transacoes"] = []
-                salvar_dados(st.session_state.dados)
-                st.success("🚨 Semana fechada com sucesso! Todos os gráficos voltaram a zero e as turmas estão prontas para a nova semana.")
-                st.rerun()
+            if st.button("RESETAR GASTOS DA SEMANA"):
+                for t in TURMAS: st.session_state.dados[t]["transacoes"] = []
+                salvar_dados(st.session_state.dados); st.rerun()
