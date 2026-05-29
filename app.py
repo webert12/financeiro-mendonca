@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import os
 from datetime import datetime
+from fpdf import FPDF
 
 # --- CONFIGURAÇÃO VISUAL ESTILO "APK" ---
 st.set_page_config(
@@ -53,6 +54,19 @@ st.markdown("""
 
 DATA_FILE = "gastos_dados.json"
 LIMITE_DINHEIRO_SEMANAL = 500.00
+
+# --- FUNÇÃO GERADOR DE PDF ---
+def gerar_pdf(titulo, conteudo):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(200, 10, txt=titulo, ln=True, align='C')
+    pdf.set_font("Arial", size=12)
+    pdf.ln(10)
+    # Codificação para suporte a acentos brasileiros
+    conteudo_formatado = conteudo.encode('latin-1', 'replace').decode('latin-1')
+    pdf.multi_cell(0, 10, txt=conteudo_formatado)
+    return pdf.output(dest='S').encode('latin-1')
 
 # --- USUÁRIOS E SENHAS ---
 CREDENCIAIS = {
@@ -227,7 +241,7 @@ else:
             mostrar_painel = st.toggle("📝 Registrar Despesas", value=False)
             if mostrar_painel:
                 st.subheader("Nova Despesa")
-                categoria_pai = st.selectbox("Selecione o que foi gasto", ["Café da Manhã", "Café da tarde", "Almoço", "Jantar", "Outros"])
+                categoria_pai = st.selectbox("Selecione o que foi gasto", ["Café da Manhã", "Almoço", "Outros"])
                 sub_categoria = "Nenhum"
                 detalhe_texto = ""
                 if categoria_pai == "Outros":
@@ -279,7 +293,8 @@ else:
             with sub_f:
                 t_mes = [t for t in hist if t.get("ano_mes") == mes_sel]
                 resumo = "RELATÓRIO FINANCEIRO\n\n" + "\n".join([f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes])
-                st.download_button("📥 Baixar Relatório", "\ufeff" + resumo, f"financeiro_{target_turma}.txt")
+                pdf_fin = gerar_pdf("Relatório Financeiro", resumo)
+                st.download_button("📥 Baixar PDF Financeiro", pdf_fin, f"financeiro_{target_turma}.pdf", "application/pdf")
                 for t in reversed(t_mes): st.write(f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}")
             with sub_p:
                 p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel]
@@ -288,7 +303,8 @@ else:
                     sel = st.selectbox("Escolha o poço", opcoes)
                     p_sel = next(p for p in p_mes if f"{p.get('data', 'S/D')} - {p.get('cliente', 'Sem Nome')}" == sel)
                     resumo_p = f"RELATÓRIO DE POÇO\nData: {p_sel.get('data')}\nCliente: {p_sel.get('cliente')}\nCidade: {p_sel.get('cidade')}\nMetragem: {p_sel.get('metragem')}\nMaterial: {p_sel.get('material')}\nEquipe: {p_sel.get('funcionarios')}"
-                    st.download_button("📥 Baixar Relatório do Poço", "\ufeff" + resumo_p, f"poco_{p_sel.get('cliente', 'poco')}.txt")
+                    pdf_poco = gerar_pdf("Relatório de Poço", resumo_p)
+                    st.download_button("📥 Baixar PDF do Poço", pdf_poco, f"poco_{p_sel.get('cliente', 'poco')}.pdf", "application/pdf")
                     for p in reversed(p_mes): st.write(f"📍 {p.get('data')} - {p.get('cliente')} ({p.get('cidade')})")
 
     if st.session_state.perfil == "ADM":
