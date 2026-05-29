@@ -1,7 +1,7 @@
 import streamlit as st
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import io
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -11,6 +11,9 @@ st.set_page_config(page_title="Mendonça Poços", page_icon="💧", layout="cent
 
 # Estilização profissional para Celular (Mobile-First)
 st.markdown("""""", unsafe_allow_html=True)
+
+# CONFIGURAÇÃO DO FUSO HORÁRIO DE BRASÍLIA (UTC-3)
+FUSO_BRASILIA = timezone(timedelta(hours=-3))
 
 DATA_FILE = "gastos_dados.json"
 LIMITE_DINHEIRO_SEMANAL = 500.00
@@ -186,20 +189,100 @@ else:
     
     desenhar_logo()
     
-    # Abas principais do menu
-    abas_menu = ["Registrar", "Mídias", "Relatório Mensal"]
-    if st.session_state.perfil == "ADM": 
-        abas_menu.append("Painel ADM") 
-    
-    aba1, aba2, aba3, *aba4 = st.tabs(abas_menu)
-    
-    with aba1: 
-        if st.session_state.perfil == "ADM": 
-            st.warning("O perfil Administrador serve apenas para monitoramento.")
-        else: 
+    # --- LOGICA DE MENUS SEPARADOS (ADM vs FUNCIONÁRIO) ---
+    if st.session_state.perfil == "ADM":
+        # Painel do ADM focado apenas em auditoria e gerenciamento global
+        aba_relatorio, aba_adm = st.tabs(["📅 Relatório Mensal", "⚙️ Painel ADM"])
+        
+        with aba_relatorio:
+            st.subheader("📅 Histórico Mensal de Equipes") 
+            target_turma = st.selectbox("Selecione o Colaborador para Auditar", TURMAS) 
+            hist = st.session_state.dados[target_turma]["historico"] 
+            pocos = st.session_state.dados[target_turma].get("pocos", []) 
+            midias = st.session_state.dados[target_turma].get("midias", [])
+            
+            meses = sorted(list(set(t.get("ano_mes", datetime.now(FUSO_BRASILIA).strftime("%Y-%m")) for t in hist + pocos + midias)), reverse=True) 
+            if meses: 
+                mes_sel = st.selectbox("Escolha o mês", meses, key="mes_sel_adm") 
+                sub_f, sub_p, sub_m = st.tabs(["💰 Custos", "🚰 Poços", "📷 Mídias"]) 
+                
+                with sub_f: 
+                    t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
+                    linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes]
+                    pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {target_turma} - {mes_sel}", linhas_pdf_fin)
+                    st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf") 
+                    for t in reversed(t_mes): 
+                        st.write(f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
+                
+                with sub_p: 
+                    p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel] 
+                    if p_mes: 
+                        sel_poco = st.selectbox("Escolha o poço para baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes], key="sel_poco_adm") 
+                        p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco) 
+                        linhas_pdf_poco = [
+                            f"Data de Registro: {p_baixar['data']}",
+                            f"Cliente: {p_baixar['cliente']}",
+                            f"Cidade: {p_baixar['cidade']}",
+                            f"Metragem Perfurada: {p_baixar['metragem']} metros",
+                            f"Funcionarios na Obra: {p_baixar['funcionarios']}",
+                            f"Materiais Utilizados: {p_baixar['material']}"
+                        ]
+                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
+                        st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
+                        for p in reversed(p_mes): 
+                            st.write(f"📍 {p['data']} - {p['cliente']} ({p['cidade']})") 
+                    else: 
+                        st.caption("Nenhum poço encontrado.")
+                
+                with sub_m:
+                    m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
+                    if m_mes:
+                        pocos_disponiveis = sorted(list(set(m.get("poco", "Geral / Sem Poço Específico") for m in m_mes)))
+                        poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar fotos e vídeos:", pocos_disponiveis, key="poco_sel_midia_adm")
+                        m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
+                        
+                        fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                        videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                        
+                        st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
+                        with st.expander("📸 FOTOS SALVAS"):
+                            if fotos_filtradas:
+                                for f in reversed(fotos_filtradas):
+                                    st.write(f"📅 {f['data']}")
+                                    if os.path.exists(f['caminho']): st.image(f['caminho'], use_container_width=True)
+                                    else: st.caption("Arquivo físico não localizado.")
+                                    st.divider()
+                            else: st.caption("Nenhuma foto localizada para este poço.")
+                        
+                        with st.expander("🎥 VÍDEOS SALVOS"):
+                            if videos_filtrados:
+                                for v in reversed(videos_filtrados):
+                                    st.write(f"📅 {v['data']}")
+                                    if os.path.exists(v['caminho']): st.video(v['caminho'])
+                                    else: st.caption("Arquivo físico não localizado.")
+                                    st.divider()
+                            else: st.caption("Nenhum vídeo localizado para este poço.")
+                    else:
+                        st.caption("Nenhuma mídia registrada para este colaborador neste mês.")
+            else:
+                st.info("Nenhum registro encontrado para este colaborador.")
+
+        with aba_adm:
+            st.subheader("⚙️ Controle Global do Sistema")
+            if st.button("❌ RESETAR GASTOS DA SEMANA (TODAS AS EQUIPES)", type="primary"): 
+                for t in TURMAS: 
+                    st.session_state.dados[t]["transacoes"] = [] 
+                salvar_dados(st.session_state.dados)
+                st.success("Limites semanais resetados com sucesso!")
+                st.rerun()
+
+    else:
+        # Interface Operacional Completa Exclusiva dos Funcionários
+        aba1, aba2, aba3 = st.tabs(["📝 Registrar", "📷 Mídias", "📅 Relatório Mensal"])
+        
+        with aba1: 
             t_ativa = st.session_state.turma 
             trans_semana = st.session_state.dados[t_ativa]["transacoes"] 
-            pocos_registrados = st.session_state.dados[t_ativa].get("pocos", []) 
             
             total_gasto_dinheiro = sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro')
             saldo_restante_dinheiro = LIMITE_DINHEIRO_SEMANAL - total_gasto_dinheiro
@@ -216,24 +299,21 @@ else:
                     valor_input = st.text_input("Valor R$") 
                     if st.form_submit_button("SALVAR"): 
                         valor_final = float(valor_input.replace(",", ".")) 
-                        novo_trans = {"data": datetime.now().strftime("%d/%m %H:%M"), "ano_mes": datetime.now().strftime("%Y-%m"), "categoria": cat, "metodo": "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão", "valor": valor_final} 
+                        novo_trans = {"data": datetime.now(FUSO_BRASILIA).strftime("%d/%m %H:%M"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), "categoria": cat, "metodo": "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão", "valor": valor_final} 
                         st.session_state.dados[t_ativa]["transacoes"].append(novo_trans) 
                         st.session_state.dados[t_ativa]["historico"].append(novo_trans) 
                         salvar_dados(st.session_state.dados); st.rerun() 
+                        
             mostrar_pocos = st.toggle("🚰 Poços Perfurados", value=False) 
             if mostrar_pocos: 
                 with st.form("form_pocos", clear_on_submit=True): 
                     cl = st.text_input("Cliente"); ci = st.text_input("Cidade"); mt = st.text_input("Metragem"); mat = st.text_area("Material"); fun = st.text_input("Funcionários") 
                     if st.form_submit_button("SALVAR RELATÓRIO"): 
-                        st.session_state.dados[t_ativa]["pocos"].append({"data": datetime.now().strftime("%d/%m/%Y"), "ano_mes": datetime.now().strftime("%Y-%m"), "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun}) 
+                        st.session_state.dados[t_ativa]["pocos"].append({"data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun}) 
                         salvar_dados(st.session_state.dados); st.rerun()
 
-    # --- ABA: MÍDIAS ---
-    with aba2:
-        st.subheader("📷 Gerenciamento de Mídias")
-        if st.session_state.perfil == "ADM":
-            st.warning("O perfil Administrador serve apenas para monitoramento.")
-        else:
+        with aba2:
+            st.subheader("📷 Gerenciamento de Mídias")
             t_ativa = st.session_state.turma
             
             if st.session_state.msg_sucesso:
@@ -244,68 +324,40 @@ else:
             categoria_poco_sel = st.selectbox("📍 Vincular esta mídia a qual Poço/Cliente?", ["Geral / Sem Poço Específico"] + pocos_existentes)
             
             st.divider()
-            
             st.write("**Opção 1: Tirar Foto 📸**")
-            st.caption("O salvamento é automático assim que o carregamento terminar.")
-            foto_capturada = st.file_uploader(
-                "Toque abaixo para usar a câmera ou escolher foto:", 
-                type=["jpg", "jpeg", "png"], 
-                key=f"foto_auto_{st.session_state.foto_key}"
-            )
+            foto_capturada = st.file_uploader("Toque abaixo para tirar ou escolher foto:", type=["jpg", "jpeg", "png"], key=f"foto_auto_{st.session_state.foto_key}")
             
             if foto_capturada is not None:
-                if not os.path.exists("saved_media"):
-                    os.makedirs("saved_media")
-                nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}_camera.jpg"
+                if not os.path.exists("saved_media"): os.makedirs("saved_media")
+                nome_arquivo = f"saved_media/{t_ativa}_{datetime.now(FUSO_BRASILIA).strftime('%Y%m%d_%H%M%S')}_camera.jpg"
+                with open(nome_arquivo, "wb") as f: f.write(foto_capturada.getbuffer())
                 
-                with open(nome_arquivo, "wb") as f:
-                    f.write(foto_capturada.getbuffer())
-                
-                nova_midia = {
-                    "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                    "ano_mes": datetime.now().strftime("%Y-%m"),
-                    "caminho": nome_arquivo,
-                    "tipo": "image/jpeg",
-                    "poco": categoria_poco_sel
-                }
-                st.session_state.dados[t_ativa]["midias"].append(nova_midia)
+                st.session_state.dados[t_ativa]["midias"].append({
+                    "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
+                    "caminho": nome_arquivo, "tipo": "image/jpeg", "poco": categoria_poco_sel
+                })
                 salvar_dados(st.session_state.dados)
-                
                 st.session_state.foto_key += 1
-                st.session_state.msg_sucesso = "📸 Foto salva com sucesso no sistema!"
+                st.session_state.msg_sucesso = "📸 Foto salva automaticamente!"
                 st.rerun()
 
             st.divider()
-
             st.write("**Opção 2: Gravar Vídeo 🎥**")
-            st.caption("O vídeo é gravado automaticamente assim que o envio chegar em 100%.")
-            video_gravado = st.file_uploader(
-                "Toque abaixo para filmar ou escolher arquivo de vídeo:", 
-                type=["mp4", "mov", "avi", "3gp"], 
-                key=f"video_auto_{st.session_state.video_key}"
-            )
+            video_gravado = st.file_uploader("Toque abaixo para filmar ou escolher vídeo:", type=["mp4", "mov", "avi", "3gp"], key=f"video_auto_{st.session_state.video_key}")
             
             if video_gravado is not None:
-                if not os.path.exists("saved_media"):
-                    os.makedirs("saved_media")
+                if not os.path.exists("saved_media"): os.makedirs("saved_media")
                 extensao = video_gravado.name.split(".")[-1]
-                nome_arquivo = f"saved_media/{t_ativa}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{extensao}"
+                nome_arquivo = f"saved_media/{t_ativa}_{datetime.now(FUSO_BRASILIA).strftime('%Y%m%d_%H%M%S')}.{extensao}"
+                with open(nome_arquivo, "wb") as f: f.write(video_gravado.getbuffer())
                 
-                with open(nome_arquivo, "wb") as f:
-                    f.write(video_gravado.getbuffer())
-                
-                nova_midia = {
-                    "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
-                    "ano_mes": datetime.now().strftime("%Y-%m"),
-                    "caminho": nome_arquivo,
-                    "tipo": video_gravado.type,
-                    "poco": categoria_poco_sel
-                }
-                st.session_state.dados[t_ativa]["midias"].append(nova_midia)
+                st.session_state.dados[t_ativa]["midias"].append({
+                    "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
+                    "caminho": nome_arquivo, "tipo": video_gravado.type, "poco": categoria_poco_sel
+                })
                 salvar_dados(st.session_state.dados)
-                
                 st.session_state.video_key += 1
-                st.session_state.msg_sucesso = "🎥 Vídeo carregado e salvo com sucesso!"
+                st.session_state.msg_sucesso = "🎥 Vídeo salvo automaticamente!"
                 st.rerun()
 
             st.markdown("""
@@ -314,10 +366,7 @@ else:
                     const aplicarFiltrosCamera = () => {
                         const inputs = doc.querySelectorAll('input[type=\"file\"]');
                         inputs.forEach(input => {
-                            if (input.accept.includes('mp4') || input.accept.includes('video')) {
-                                input.setAttribute('capture', 'environment');
-                            }
-                            if (input.accept.includes('jpg') || input.accept.includes('jpeg') || input.accept.includes('png')) {
+                            if (input.accept.includes('mp4') || input.accept.includes('video') || input.accept.includes('jpg')) {
                                 input.setAttribute('capture', 'environment');
                             }
                         });
@@ -326,92 +375,62 @@ else:
                 "></iframe>
             """, unsafe_allow_html=True)
 
-    with aba3: 
-        st.subheader("📅 Histórico Mensal") 
-        target_turma = st.session_state.turma if st.session_state.perfil == "TURMA" else st.selectbox("Selecione o Colaborador", TURMAS) 
-        hist = st.session_state.dados[target_turma]["historico"] 
-        pocos = st.session_state.dados[target_turma].get("pocos", []) 
-        midias = st.session_state.dados[target_turma].get("midias", [])
-        
-        meses = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in hist + pocos + midias)), reverse=True) 
-        if meses: 
-            mes_sel = st.selectbox("Escolha o mês", meses) 
-            sub_f, sub_p, sub_m = st.tabs(["💰 Custos", "🚰 Poços", "📷 Mídias"]) 
+        with aba3: 
+            st.subheader("📅 Histórico Mensal") 
+            target_turma = st.session_state.turma 
+            hist = st.session_state.dados[target_turma]["historico"] 
+            pocos = st.session_state.dados[target_turma].get("pocos", []) 
+            midias = st.session_state.dados[target_turma].get("midias", [])
             
-            with sub_f: 
-                t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
-                linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes]
-                pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {target_turma} - {mes_sel}", linhas_pdf_fin)
+            meses = sorted(list(set(t.get("ano_mes", datetime.now(FUSO_BRASILIA).strftime("%Y-%m")) for t in hist + pocos + midias)), reverse=True) 
+            if meses: 
+                mes_sel = st.selectbox("Escolha o mês", meses, key="mes_sel_turma") 
+                sub_f, sub_p, sub_m = st.tabs(["💰 Custos", "🚰 Poços", "📷 Mídias"]) 
                 
-                st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf") 
-                for t in reversed(t_mes): 
-                    st.write(f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
-            
-            with sub_p: 
-                p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel] 
-                if p_mes: 
-                    sel_poco = st.selectbox("Escolha o poço para baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes]) 
-                    p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco) 
-                    
-                    linhas_pdf_poco = [
-                        f"Data de Registro: {p_baixar['data']}",
-                        f"Cliente: {p_baixar['cliente']}",
-                        f"Cidade: {p_baixar['cidade']}",
-                        f"Metragem Perfurada: {p_baixar['metragem']} metros",
-                        f"Funcionarios na Obra: {p_baixar['funcionarios']}",
-                        f"Materiais Utilizados: {p_baixar['material']}"
-                    ]
-                    pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
-                    
-                    st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
-                    for p in reversed(p_mes): 
-                        st.write(f"📍 {p['data']} - {p['cliente']} ({p['cidade']})") 
-                else: 
-                    st.caption("Nenhum poço encontrado.")
-            
-            with sub_m:
-                m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
+                with sub_f: 
+                    t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
+                    linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes]
+                    pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {target_turma} - {mes_sel}", linhas_pdf_fin)
+                    st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf") 
+                    for t in reversed(t_mes): st.write(f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
                 
-                if m_mes:
-                    pocos_disponiveis = sorted(list(set(m.get("poco", "Geral / Sem Poço Específico") for m in m_mes)))
-                    poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar fotos e vídeos:", pocos_disponiveis)
-                    
-                    m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
-                    
-                    fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
-                    videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
-                    
-                    st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
-                    
-                    with st.expander("📸 FOTOS SALVAS"):
-                        if fotos_filtradas:
-                            for f in reversed(fotos_filtradas):
-                                st.write(f"📅 {f['data']}")
-                                if os.path.exists(f['caminho']):
-                                    st.image(f['caminho'], use_container_width=True)
-                                else:
-                                    st.caption("Arquivo físico não localizado.")
-                                st.divider()
-                        else:
-                            st.caption("Nenhuma foto localizada para este poço.")
-                    
-                    with st.expander("🎥 VÍDEOS SALVOS"):
-                        if videos_filtrados:
-                            for v in reversed(videos_filtrados):
-                                st.write(f"📅 {v['data']}")
-                                if os.path.exists(v['caminho']):
-                                    st.video(v['caminho'])
-                                else:
-                                    st.caption("Arquivo físico não localizado.")
-                                st.divider()
-                        else:
-                            st.caption("Nenhum vídeo localizado para este poço.")
-                else:
-                    st.caption("Nenhuma mídia registrada para este colaborador neste mês.")
-
-    if st.session_state.perfil == "ADM": 
-        with aba4[0]: 
-            if st.button("RESETAR GASTOS DA SEMANA"): 
-                for t in TURMAS: 
-                    st.session_state.dados[t]["transacoes"] = [] 
-                salvar_dados(st.session_state.dados); st.rerun()
+                with sub_p: 
+                    p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel] 
+                    if p_mes: 
+                        sel_poco = st.selectbox("Escolha o poço para baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes], key="sel_poco_turma") 
+                        p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco) 
+                        linhas_pdf_poco = [
+                            f"Data de Registro: {p_baixar['data']}", f"Cliente: {p_baixar['cliente']}", f"Cidade: {p_baixar['cidade']}",
+                            f"Metragem Perfurada: {p_baixar['metragem']} metros", f"Funcionarios na Obra: {p_baixar['funcionarios']}", f"Materiais Utilizados: {p_baixar['material']}"
+                        ]
+                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
+                        st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
+                        for p in reversed(p_mes): st.write(f"📍 {p['data']} - {p['cliente']} ({p['cidade']})") 
+                    else: st.caption("Nenhum poço encontrado.")
+                
+                with sub_m:
+                    m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
+                    if m_mes:
+                        pocos_disponiveis = sorted(list(set(m.get("poco", "Geral / Sem Poço Específico") for m in m_mes)))
+                        poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar fotos e vídeos:", pocos_disponiveis, key="poco_sel_midia_turma")
+                        m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
+                        
+                        fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                        videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                        
+                        st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
+                        with st.expander("📸 FOTOS SALVAS"):
+                            if fotos_filtradas:
+                                for f in reversed(fotos_filtradas):
+                                    st.write(f"📅 {f['data']}")
+                                    if os.path.exists(f['caminho']): st.image(f['caminho'], use_container_width=True)
+                                    st.divider()
+                            else: st.caption("Nenhuma foto localizada para este poço.")
+                        with st.expander("🎥 VÍDEOS SALVOS"):
+                            if videos_filtrados:
+                                for v in reversed(videos_filtrados):
+                                    st.write(f"📅 {v['data']}")
+                                    if os.path.exists(v['caminho']): st.video(v['caminho'])
+                                    st.divider()
+                            else: st.caption("Nenhum vídeo localizado para este poço.")
+                    else: st.caption("Nenhuma mídia registrada para este colaborador neste mês.")
