@@ -227,7 +227,7 @@ else:
             mostrar_painel = st.toggle("📝 Registrar Despesas", value=False)
             if mostrar_painel:
                 st.subheader("Nova Despesa")
-                categoria_pai = st.selectbox("Selecione o que foi gasto", ["Café da Manhã", "Almoço", "Outros"])
+                categoria_pai = st.selectbox("Selecione o que foi gasto", ["Café da Manhã", "Café da tarde", "Almoço", "Jantar", "Outros"])
                 sub_categoria = "Nenhum"
                 detalhe_texto = ""
                 if categoria_pai == "Outros":
