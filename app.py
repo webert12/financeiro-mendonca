@@ -9,14 +9,23 @@ from fpdf import FPDF
 st.set_page_config(
     page_title="Mendonça Poços",
     page_icon="💧",
-    layout="centered",
+    layout="wide",
     initial_sidebar_state="collapsed"
 )
 
 # Estilização profissional para Celular (Mobile-First)
 st.markdown("""
     <style>
-    .main { background-color: #0e1117; }
+    .main {
+        background-color: #0e1117;
+    }
+
+    .block-container {
+        padding-top: 1rem;
+        padding-left: 1rem;
+        padding-right: 1rem;
+        max-width: 100% !important;
+    }
 
     div.stButton > button:first-child {
         background-color: #00cfcc;
@@ -25,6 +34,7 @@ st.markdown("""
         height: 3em;
         width: 100%;
         font-weight: bold;
+        border: none;
     }
 
     .stMetric {
@@ -64,14 +74,32 @@ st.markdown("""
         border-left: 5px solid #00cfcc;
     }
 
+    /* CAMERA EM TELA CHEIA */
+    .stCameraInput {
+        width: 100% !important;
+    }
+
+    .stCameraInput > div {
+        width: 100% !important;
+    }
+
     .stCameraInput video {
-        border-radius: 15px;
-        width: 100%;
+        width: 100% !important;
+        height: 75vh !important;
+        object-fit: cover !important;
+        border-radius: 20px;
+        background: black;
     }
 
     .stFileUploader {
         background-color: #1e2129;
         padding: 10px;
+        border-radius: 15px;
+    }
+
+    /* PLAYER DE VÍDEO */
+    video {
+        width: 100% !important;
         border-radius: 15px;
     }
     </style>
@@ -247,56 +275,6 @@ if st.session_state.perfil is None:
             else:
                 st.error("Usuário não encontrado.")
 
-    elif st.session_state.selecionou_usuario == "ADM_SENHA":
-
-        st.write("Digite a senha master para o perfil: **ADM**")
-
-        senha_adm = st.text_input("Senha ADM", type="password")
-
-        c_voltar, c_entrar = st.columns(2)
-
-        if c_voltar.button("Voltar"):
-            st.session_state.selecionou_usuario = None
-            st.rerun()
-
-        if c_entrar.button("Entrar como ADM"):
-
-            if senha_adm == CREDENCIAIS["ADM"]:
-
-                st.session_state.perfil = "ADM"
-                st.session_state.selecionou_usuario = "ADM_MONITORAMENTO"
-                st.rerun()
-
-            else:
-                st.error("Senha de Administrador incorreta!")
-
-    elif st.session_state.selecionou_usuario == "ADM_MONITORAMENTO":
-
-        st.subheader("Painel de Monitoramento (ADM)")
-
-        st.write(
-            "Selecione uma das equipes abaixo para auditar ou clique em 'Entrar no Panel Geral':"
-        )
-
-        col1, col2 = st.columns(2)
-
-        for idx, t in enumerate(TURMAS):
-
-            c = col1 if idx % 2 == 0 else col2
-
-            if c.button(f"Ver {t}"):
-
-                st.session_state.perfil = "TURMA"
-                st.session_state.turma = t
-                st.session_state.selecionou_usuario = None
-                st.rerun()
-
-        st.divider()
-
-        if st.button("Ir para o Painel Geral Consolidado 📊"):
-            st.session_state.selecionou_usuario = None
-            st.rerun()
-
 # --- INTERFACE PRINCIPAL OPERACIONAL ---
 else:
 
@@ -328,571 +306,200 @@ else:
         "📸 Capturar Mídias"
     ]
 
-    if st.session_state.perfil == "ADM":
-        abas_menu.append("Painel ADM")
-
-    aba1, aba2, aba_midia, *aba3 = st.tabs(abas_menu)
+    aba1, aba2, aba_midia = st.tabs(abas_menu)
 
     # =========================
-    # ABA REGISTRAR
-    # =========================
-    with aba1:
-
-        if st.session_state.perfil == "ADM":
-
-            st.warning(
-                "O perfil Administrador serve apenas para monitoramento corporativo."
-            )
-
-        else:
-
-            t_ativa = st.session_state.turma
-            trans_semana = st.session_state.dados[t_ativa]["transacoes"]
-
-            total_dinheiro = sum(
-                t['valor']
-                for t in trans_semana
-                if t.get('metodo') == 'Dinheiro'
-            )
-
-            total_cartao = sum(
-                t['valor']
-                for t in trans_semana
-                if t.get('metodo') == 'Cartão'
-            )
-
-            saldo_dinheiro = LIMITE_DINHEIRO_SEMANAL - total_dinheiro
-
-            c1, c2 = st.columns(2)
-
-            c1.metric(
-                "💵 Saldo Dinheiro",
-                f"R$ {saldo_dinheiro:.2f}"
-            )
-
-            c2.metric(
-                "💳 Cartão Acumulado",
-                f"R$ {total_cartao:.2f}"
-            )
-
-            pct_consumido = (
-                min(total_dinheiro / LIMITE_DINHEIRO_SEMANAL, 1.0)
-                if LIMITE_DINHEIRO_SEMANAL > 0
-                else 0
-            )
-
-            st.progress(pct_consumido)
-
-            st.caption(
-                f"Progresso de consumo do limite semanal ({int(pct_consumido*100)}%)"
-            )
-
-            st.divider()
-
-            mostrar_painel = st.toggle(
-                "📝 Registrar Despesas",
-                value=False
-            )
-
-            if mostrar_painel:
-
-                st.subheader("Nova Despesa")
-
-                categoria_pai = st.selectbox(
-                    "Selecione o que foi gasto",
-                    [
-                        "Café da Manhã",
-                        "Café da tarde",
-                        "Almoço",
-                        "Jantar",
-                        "Outros"
-                    ]
-                )
-
-                sub_categoria = "Nenhum"
-                detalhe_texto = ""
-
-                if categoria_pai == "Outros":
-
-                    sub_categoria = st.radio(
-                        "Subcategoria",
-                        [
-                            "Mecânica",
-                            "Pedágio",
-                            "Transportes",
-                            "Escrever motivo próprio"
-                        ],
-                        horizontal=True
-                    )
-
-                    if sub_categoria == "Escrever motivo próprio":
-                        detalhe_texto = st.text_input("Escreva detalhadamente:")
-
-                with st.form("form_final_envio", clear_on_submit=True):
-
-                    opcao_pgto = st.radio(
-                        "Método de pagamento?",
-                        [
-                            "💵 Dinheiro em Espécie",
-                            "💳 Cartão de Crédito"
-                        ],
-                        horizontal=True
-                    )
-
-                    valor_input = st.text_input("Valor gasto R$")
-
-                    if st.form_submit_button(
-                        "CONFIRMAR E SALVAR LANÇAMENTO"
-                    ):
-
-                        try:
-
-                            valor_limpo = valor_input.replace(",", ".").strip()
-                            valor_final = float(valor_limpo)
-
-                            metodo_final = (
-                                "Dinheiro"
-                                if "Dinheiro" in opcao_pgto
-                                else "Cartão"
-                            )
-
-                            categoria_final = (
-                                f"Outros ({detalhe_texto.strip()})"
-                                if (
-                                    categoria_pai == "Outros"
-                                    and sub_categoria == "Escrever motivo próprio"
-                                )
-                                else (
-                                    sub_categoria
-                                    if categoria_pai == "Outros"
-                                    else categoria_pai
-                                )
-                            )
-
-                            agora = datetime.now(TZ_BRASILIA)
-
-                            nova_trans = {
-                                "data": agora.strftime("%d/%m %H:%M"),
-                                "ano_mes": agora.strftime("%Y-%m"),
-                                "categoria": categoria_final,
-                                "metodo": metodo_final,
-                                "valor": valor_final
-                            }
-
-                            st.session_state.dados[t_ativa]["transacoes"].append(
-                                nova_trans
-                            )
-
-                            st.session_state.dados[t_ativa]["historico"].append(
-                                nova_trans
-                            )
-
-                            salvar_dados(st.session_state.dados)
-
-                            st.rerun()
-
-                        except ValueError:
-
-                            st.error(
-                                "Erro no formato do valor. "
-                                "Use apenas números."
-                            )
-
-            mostrar_pocos = st.toggle(
-                "🚰 Poços Perfurados",
-                value=False
-            )
-
-            if mostrar_pocos:
-
-                st.subheader("Relatório de Poço Concluído")
-
-                with st.form("form_pocos_perfurados", clear_on_submit=True):
-
-                    data_p = datetime.now(TZ_BRASILIA).strftime("%d/%m/%Y")
-
-                    data_input = st.text_input("Data", value=data_p)
-                    cliente = st.text_input("Cliente")
-                    cidade = st.text_input("Cidade")
-                    metragem = st.text_input("Metragem")
-                    material = st.text_area("Materiais")
-                    fun = st.text_input("Funcionários")
-
-                    if st.form_submit_button(
-                        "SALVAR RELATÓRIO DO POÇO"
-                    ):
-
-                        novo_poco = {
-                            "data": data_input,
-                            "ano_mes": datetime.now(TZ_BRASILIA).strftime("%Y-%m"),
-                            "cliente": cliente,
-                            "cidade": cidade,
-                            "metragem": metragem,
-                            "material": material,
-                            "funcionarios": fun
-                        }
-
-                        st.session_state.dados[t_ativa]["pocos"].append(
-                            novo_poco
-                        )
-
-                        salvar_dados(st.session_state.dados)
-
-                        st.rerun()
-
-    # =========================
-    # RELATÓRIOS
-    # =========================
-    with aba2:
-
-        st.subheader("📅 Histórico Mensal")
-
-        target_turma = (
-            st.session_state.turma
-            if st.session_state.perfil == "TURMA"
-            else st.selectbox("Selecione o colaborador", TURMAS)
-        )
-
-        hist = st.session_state.dados[target_turma]["historico"]
-        pocos = st.session_state.dados[target_turma].get("pocos", [])
-        lista_midias = st.session_state.dados[target_turma].get("midias", [])
-
-        meses = sorted(
-            list(
-                set(
-                    t.get(
-                        "ano_mes",
-                        datetime.now(TZ_BRASILIA).strftime("%Y-%m")
-                    )
-                    for t in hist + pocos
-                )
-            ),
-            reverse=True
-        )
-
-        if meses:
-
-            mes_sel = st.selectbox("Escolha o mês", meses)
-
-            sub_f, sub_p, sub_m = st.tabs(
-                [
-                    "💰 Controle de Custos",
-                    "🚰 Poços Executados",
-                    "📸 Fotos e Vídeos"
-                ]
-            )
-
-            with sub_f:
-
-                t_mes = [
-                    t for t in hist
-                    if t.get("ano_mes") == mes_sel
-                ]
-
-                resumo = (
-                    "RELATÓRIO FINANCEIRO\n\n"
-                    + "\n".join(
-                        [
-                            f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}"
-                            for t in t_mes
-                        ]
-                    )
-                )
-
-                pdf_fin = gerar_pdf(
-                    "Relatório Financeiro",
-                    resumo
-                )
-
-                st.download_button(
-                    "📥 Baixar PDF Financeiro",
-                    pdf_fin,
-                    f"financeiro_{target_turma}.pdf",
-                    "application/pdf"
-                )
-
-                for t in reversed(t_mes):
-
-                    st.write(
-                        f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}"
-                    )
-
-            with sub_p:
-
-                p_mes = [
-                    p for p in pocos
-                    if p.get("ano_mes") == mes_sel
-                ]
-
-                if p_mes:
-
-                    opcoes = [
-                        f"{p.get('data', 'S/D')} - {p.get('cliente', 'Sem Nome')}"
-                        for p in p_mes
-                    ]
-
-                    sel = st.selectbox("Escolha o poço", opcoes)
-
-                    p_sel = next(
-                        p for p in p_mes
-                        if f"{p.get('data', 'S/D')} - {p.get('cliente', 'Sem Nome')}" == sel
-                    )
-
-                    resumo_p = (
-                        f"RELATÓRIO DE POÇO\n"
-                        f"Data: {p_sel.get('data')}\n"
-                        f"Cliente: {p_sel.get('cliente')}\n"
-                        f"Cidade: {p_sel.get('cidade')}\n"
-                        f"Metragem: {p_sel.get('metragem')}\n"
-                        f"Material: {p_sel.get('material')}\n"
-                        f"Equipe: {p_sel.get('funcionarios')}"
-                    )
-
-                    pdf_poco = gerar_pdf(
-                        "Relatório de Poço",
-                        resumo_p
-                    )
-
-                    st.download_button(
-                        "📥 Baixar PDF do Poço",
-                        pdf_poco,
-                        f"poco_{p_sel.get('cliente', 'poco')}.pdf",
-                        "application/pdf"
-                    )
-
-                    for p in reversed(p_mes):
-
-                        st.write(
-                            f"📍 {p.get('data')} - "
-                            f"{p.get('cliente')} "
-                            f"({p.get('cidade')})"
-                        )
-
-            with sub_m:
-
-                midias_mes = []
-
-                for m in lista_midias:
-                    try:
-                        data_formatada = datetime.strptime(
-                            m["data"],
-                            "%d/%m/%Y %H:%M"
-                        ).strftime("%Y-%m")
-
-                        if data_formatada == mes_sel:
-                            midias_mes.append(m)
-
-                    except:
-                        pass
-
-                if midias_mes:
-
-                    st.subheader("📂 Histórico de Fotos e Vídeos")
-
-                    for item in reversed(midias_mes):
-
-                        st.markdown(
-                            "<div class='media-card'>",
-                            unsafe_allow_html=True
-                        )
-
-                        st.write(f"📅 {item['data']}")
-                        st.write(f"📝 {item['descricao']}")
-
-                        if os.path.exists(item["arquivo"]):
-
-                            if item["tipo"] == "foto":
-                                st.image(
-                                    item["arquivo"],
-                                    use_container_width=True
-                                )
-
-                            elif item["tipo"] == "video":
-                                st.video(item["arquivo"])
-
-                        st.markdown(
-                            "</div>",
-                            unsafe_allow_html=True
-                        )
-
-                else:
-
-                    st.info(
-                        "Nenhuma foto ou vídeo encontrado neste mês."
-                    )
-
-    # =========================
-    # NOVA ABA DE MÍDIAS
+    # ABA MÍDIAS
     # =========================
     with aba_midia:
 
-        if st.session_state.perfil == "ADM":
+        t_ativa = st.session_state.turma
 
-            st.warning(
-                "Administrador possui acesso apenas de monitoramento."
-            )
+        st.subheader("📸 Capturar Fotos e Vídeos")
 
-        else:
+        st.info(
+            "Agora a câmera abre em tamanho grande "
+            "igual tela cheia do celular."
+        )
 
-            t_ativa = st.session_state.turma
+        tipo_midia = st.radio(
+            "Selecione o tipo",
+            ["📷 Foto", "🎥 Vídeo"],
+            horizontal=True
+        )
 
-            st.subheader("📸 Capturar Fotos e Vídeos")
+        descricao = st.text_input(
+            "Descrição da mídia"
+        )
+
+        # =========================
+        # FOTO
+        # =========================
+        if tipo_midia == "📷 Foto":
 
             st.info(
-                "As mídias salvas aparecerão apenas "
-                "na aba de Histórico Mensal."
+                "Use o botão da câmera para tirar a foto."
             )
 
-            tipo_midia = st.radio(
-                "Selecione o tipo",
-                ["📷 Foto", "🎥 Vídeo"],
-                horizontal=True
+            foto = st.camera_input(
+                "📷 Abrir câmera",
+                key="camera_foto"
             )
 
-            descricao = st.text_input(
-                "Descrição da mídia"
+            if foto is not None:
+
+                try:
+
+                    agora = datetime.now(TZ_BRASILIA)
+
+                    nome_arquivo = (
+                        f"{t_ativa}_foto_"
+                        f"{agora.strftime('%Y%m%d_%H%M%S')}.jpg"
+                    )
+
+                    caminho = os.path.join(
+                        MEDIA_DIR,
+                        nome_arquivo
+                    )
+
+                    imagem_bytes = foto.read()
+
+                    with open(caminho, "wb") as f:
+                        f.write(imagem_bytes)
+
+                    registro = {
+                        "tipo": "foto",
+                        "arquivo": caminho,
+                        "descricao": descricao,
+                        "data": agora.strftime("%d/%m/%Y %H:%M")
+                    }
+
+                    st.session_state.dados[t_ativa]["midias"].append(
+                        registro
+                    )
+
+                    salvar_dados(st.session_state.dados)
+
+                    st.success("✅ Foto salva com sucesso!")
+
+                    st.image(
+                        caminho,
+                        use_container_width=True
+                    )
+
+                except Exception as e:
+
+                    st.error(
+                        f"Erro ao salvar foto: {str(e)}"
+                    )
+
+        # =========================
+        # VÍDEO
+        # =========================
+        else:
+
+            st.warning(
+                "O Streamlit não grava vídeo pela câmera nativamente.\n\n"
+                "Foi corrigido para envio REAL de vídeo do celular."
             )
 
-            # =========================
-            # FOTO
-            # =========================
-            if tipo_midia == "📷 Foto":
+            video = st.file_uploader(
+                "🎥 Grave um vídeo pelo celular e envie aqui",
+                type=["mp4", "mov", "avi", "mkv"]
+            )
 
-                st.info(
-                    "Ao abrir a câmera, utilize a câmera original do celular "
-                    "para melhor qualidade."
+            if video is not None:
+
+                try:
+
+                    agora = datetime.now(TZ_BRASILIA)
+
+                    extensao = video.name.split(".")[-1]
+
+                    nome_arquivo = (
+                        f"{t_ativa}_video_"
+                        f"{agora.strftime('%Y%m%d_%H%M%S')}.{extensao}"
+                    )
+
+                    caminho = os.path.join(
+                        MEDIA_DIR,
+                        nome_arquivo
+                    )
+
+                    video_bytes = video.read()
+
+                    with open(caminho, "wb") as f:
+                        f.write(video_bytes)
+
+                    registro = {
+                        "tipo": "video",
+                        "arquivo": caminho,
+                        "descricao": descricao,
+                        "data": agora.strftime("%d/%m/%Y %H:%M")
+                    }
+
+                    st.session_state.dados[t_ativa]["midias"].append(
+                        registro
+                    )
+
+                    salvar_dados(st.session_state.dados)
+
+                    st.success("✅ Vídeo salvo com sucesso!")
+
+                    st.video(caminho)
+
+                except Exception as e:
+
+                    st.error(
+                        f"Erro ao salvar vídeo: {str(e)}"
+                    )
+
+        st.divider()
+
+        st.info(
+            "As mídias ficam disponíveis "
+            "na aba 'Relatório Mensal'."
+        )
+
+    # =========================
+    # RELATÓRIO
+    # =========================
+    with aba2:
+
+        st.subheader("📂 Histórico de Fotos e Vídeos")
+
+        lista_midias = st.session_state.dados[
+            st.session_state.turma
+        ].get("midias", [])
+
+        if lista_midias:
+
+            for item in reversed(lista_midias):
+
+                st.markdown(
+                    "<div class='media-card'>",
+                    unsafe_allow_html=True
                 )
 
-                foto = st.camera_input(
-                    "📷 Abrir câmera",
-                    key="camera_foto"
-                )
+                st.write(f"📅 {item['data']}")
+                st.write(f"📝 {item['descricao']}")
 
-                if foto is not None:
+                if os.path.exists(item["arquivo"]):
 
-                    try:
-
-                        agora = datetime.now(TZ_BRASILIA)
-
-                        nome_arquivo = (
-                            f"{t_ativa}_foto_"
-                            f"{agora.strftime('%Y%m%d_%H%M%S')}.jpg"
-                        )
-
-                        caminho = os.path.join(
-                            MEDIA_DIR,
-                            nome_arquivo
-                        )
-
-                        imagem_bytes = foto.read()
-
-                        with open(caminho, "wb") as f:
-                            f.write(imagem_bytes)
-
-                        registro = {
-                            "tipo": "foto",
-                            "arquivo": caminho,
-                            "descricao": descricao,
-                            "data": agora.strftime("%d/%m/%Y %H:%M")
-                        }
-
-                        st.session_state.dados[t_ativa]["midias"].append(
-                            registro
-                        )
-
-                        salvar_dados(st.session_state.dados)
-
-                        st.success("✅ Foto salva com sucesso!")
-
+                    if item["tipo"] == "foto":
                         st.image(
-                            caminho,
-                            caption="Pré-visualização",
+                            item["arquivo"],
                             use_container_width=True
                         )
 
-                    except Exception as e:
+                    elif item["tipo"] == "video":
+                        st.video(item["arquivo"])
 
-                        st.error(
-                            f"Erro ao salvar foto: {str(e)}"
-                        )
-
-            # =========================
-            # VÍDEO
-            # =========================
-            else:
-
-                st.info(
-                    "Clique em gravar vídeo usando a câmera do celular."
+                st.markdown(
+                    "</div>",
+                    unsafe_allow_html=True
                 )
 
-                video = st.camera_input(
-                    "🎥 Gravar Vídeo",
-                    key="camera_video"
-                )
+        else:
 
-                if video is not None:
-
-                    try:
-
-                        agora = datetime.now(TZ_BRASILIA)
-
-                        nome_arquivo = (
-                            f"{t_ativa}_video_"
-                            f"{agora.strftime('%Y%m%d_%H%M%S')}.mp4"
-                        )
-
-                        caminho = os.path.join(
-                            MEDIA_DIR,
-                            nome_arquivo
-                        )
-
-                        video_bytes = video.read()
-
-                        with open(caminho, "wb") as f:
-                            f.write(video_bytes)
-
-                        registro = {
-                            "tipo": "video",
-                            "arquivo": caminho,
-                            "descricao": descricao,
-                            "data": agora.strftime("%d/%m/%Y %H:%M")
-                        }
-
-                        st.session_state.dados[t_ativa]["midias"].append(
-                            registro
-                        )
-
-                        salvar_dados(st.session_state.dados)
-
-                        st.success("✅ Vídeo salvo com sucesso!")
-
-                        st.video(caminho)
-
-                    except Exception as e:
-
-                        st.error(
-                            f"Erro ao salvar vídeo: {str(e)}"
-                        )
-
-            st.divider()
-
-            st.info(
-                "As mídias ficam disponíveis apenas "
-                "na aba 'Relatório Mensal'."
-            )
-
-    # =========================
-    # PAINEL ADM
-    # =========================
-    if st.session_state.perfil == "ADM":
-
-        with aba3[0]:
-
-            if st.button("RESETAR GASTOS DA SEMANA"):
-
-                for t in TURMAS:
-                    st.session_state.dados[t]["transacoes"] = []
-
-                salvar_dados(st.session_state.dados)
-
-                st.rerun()
+            st.info("Nenhuma mídia encontrada.")
