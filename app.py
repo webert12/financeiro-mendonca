@@ -247,7 +247,7 @@ else:
                 
                 categoria_pai = st.selectbox(
                     "Selecione o que foi gasto", 
-                    ["Café da Manhã", "Café da tarde, "Almoço", "Jantar", "Outros"]
+                    ["Café da Manhã", "Café da tarde", "Almoço", "Jantar", "Outros"]
                 )
                 
                 sub_categoria = "Nenhum"
