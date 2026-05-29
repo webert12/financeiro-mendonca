@@ -2,3 +2,5 @@ streamlit
 fpdf
 pytz
 text
+reportlab
+
