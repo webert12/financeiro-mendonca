@@ -72,12 +72,11 @@ TURMAS = [nome for nome in CREDENCIAIS.keys() if nome != "ADM"]
 def carregar_dados():
     estrutura_limpa = {t: {"transacoes": [], "historico": [], "pocos": []} for t in TURMAS}
     if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
             try:
                 dados = json.load(f)
                 if "transacoes" in dados or isinstance(dados, list):
                     return estrutura_limpa
-                # Garante que chaves novas como 'pocos' existam mesmo em arquivos antigos
                 for t in TURMAS:
                     if t not in dados:
                         dados[t] = {"transacoes": [], "historico": [], "pocos": []}
@@ -89,8 +88,8 @@ def carregar_dados():
     return estrutura_limpa
 
 def salvar_dados(dados):
-    with open(DATA_FILE, "w") as f:
-        json.dump(dados, f, indent=4)
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(dados, f, indent=4, ensure_ascii=False)
 
 # Inicialização do Estado da Sessão
 if 'dados' not in st.session_state:
@@ -170,6 +169,8 @@ if st.session_state.perfil is None:
 
     elif st.session_state.selecionou_usuario == "ADM_MONITORAMENTO":
         st.subheader("Painel de Monitoramento (ADM)")
+        st.write("Selecione uma das equipes abaixo para auditar ou clique em 'Entrar no Panel Geral':")
+        
         col1, col2 = st.columns(2)
         for idx, t in enumerate(TURMAS):
             c = col1 if idx % 2 == 0 else col2
@@ -207,64 +208,88 @@ else:
 
     with aba1:
         if st.session_state.perfil == "ADM":
-            st.warning("O perfil Administrador serve apenas para monitoramento.")
+            st.warning("O perfil Administrador serve apenas para monitoramento corporativo. Faça login com o nome de um colaborador para registrar dados de campo.")
         else:
             t_ativa = st.session_state.turma
             trans_semana = st.session_state.dados[t_ativa]["transacoes"]
             pocos_registrados = st.session_state.dados[t_ativa].get("pocos", [])
             
             c1, c2 = st.columns(2)
-            c1.metric("💵 Dinheiro", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro'):.2f}")
-            c2.metric("💳 Cartão", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Cartão'):.2f}")
+            c1.metric("💵 Dinheiro Espécie", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro'):.2f}")
+            c2.metric("💳 Cartão Acumulado", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Cartão'):.2f}")
+            
+            pct_consumido = min(sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro') / LIMITE_DINHEIRO_SEMANAL, 1.0) if LIMITE_DINHEIRO_SEMANAL > 0 else 0
+            st.progress(pct_consumido)
+            st.caption(f"Progresso de consumo do limite semanal ({int(pct_consumido*100)}%)")
+            
+            st.divider()
             
             mostrar_painel = st.toggle("📝 Registrar Despesas", value=False)
             if mostrar_painel:
+                st.subheader("Nova Despesa")
+                categoria_pai = st.selectbox("Selecione o que foi gasto", ["Café da Manhã", "Almoço", "Outros"])
+                sub_categoria = "Nenhum"
+                detalhe_texto = ""
+                if categoria_pai == "Outros":
+                    sub_categoria = st.radio("Subcategoria", ["Mecânica", "Pedágio", "Transportes", "Escrever motivo próprio"], horizontal=True)
+                    if sub_categoria == "Escrever motivo próprio": detalhe_texto = st.text_input("Escreva detalhadamente:")
+
                 with st.form("form_final_envio", clear_on_submit=True):
-                    cat = st.selectbox("Categoria", ["Café da Manhã", "Almoço", "Outros"])
-                    opcao_pgto = st.radio("Método de Pagamento", ["💵 Dinheiro", "💳 Cartão"], horizontal=True)
-                    valor_input = st.text_input("Valor R$")
-                    if st.form_submit_button("SALVAR"):
-                        valor_final = float(valor_input.replace(",", "."))
-                        novo_trans = {"data": datetime.now().strftime("%d/%m %H:%M"), "ano_mes": datetime.now().strftime("%Y-%m"), "categoria": cat, "metodo": "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão", "valor": valor_final}
-                        st.session_state.dados[t_ativa]["transacoes"].append(novo_trans)
-                        st.session_state.dados[t_ativa]["historico"].append(novo_trans)
-                        salvar_dados(st.session_state.dados); st.rerun()
+                    opcao_pgto = st.radio("Método de pagamento?", ["💵 Dinheiro em Espécie", "💳 Cartão de Crédito"], horizontal=True)
+                    valor_input = st.text_input("Valor gasto R$")
+                    if st.form_submit_button("CONFIRMAR E SALVAR LANÇAMENTO"):
+                        try:
+                            valor_final = float(valor_input.replace(",", "."))
+                            metodo_final = "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão"
+                            categoria_final = f"Outros ({detalhe_texto.strip()})" if (categoria_pai == "Outros" and sub_categoria == "Escrever motivo próprio") else (sub_categoria if categoria_pai == "Outros" else categoria_pai)
+                            agora = datetime.now()
+                            nova_trans = {"data": agora.strftime("%d/%m %H:%M"), "ano_mes": agora.strftime("%Y-%m"), "categoria": categoria_final, "metodo": metodo_final, "valor": valor_final}
+                            st.session_state.dados[t_ativa]["transacoes"].append(nova_trans)
+                            st.session_state.dados[t_ativa]["historico"].append(nova_trans)
+                            salvar_dados(st.session_state.dados)
+                            st.rerun()
+                        except: st.error("Erro no valor.")
 
             mostrar_pocos = st.toggle("🚰 Poços Perfurados", value=False)
             if mostrar_pocos:
-                with st.form("form_pocos", clear_on_submit=True):
-                    cl = st.text_input("Cliente"); ci = st.text_input("Cidade"); mt = st.text_input("Metragem"); mat = st.text_area("Material"); fun = st.text_input("Funcionários")
-                    if st.form_submit_button("SALVAR RELATÓRIO"):
-                        st.session_state.dados[t_ativa]["pocos"].append({"data": datetime.now().strftime("%d/%m/%Y"), "ano_mes": datetime.now().strftime("%Y-%m"), "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun})
-                        salvar_dados(st.session_state.dados); st.rerun()
+                st.subheader("Relatório de Poço Concluído")
+                with st.form("form_pocos_perfurados", clear_on_submit=True):
+                    data_p = st.text_input("Data", value=datetime.now().strftime("%d/%m/%Y"))
+                    cliente = st.text_input("Cliente")
+                    cidade = st.text_input("Cidade")
+                    metragem = st.text_input("Metragem")
+                    material = st.text_area("Materiais")
+                    fun = st.text_input("Funcionários")
+                    if st.form_submit_button("SALVAR RELATÓRIO DO POÇO"):
+                        novo_poco = {"data": data_p, "ano_mes": datetime.now().strftime("%Y-%m"), "cliente": cliente, "cidade": cidade, "metragem": metragem, "material": material, "funcionarios": fun}
+                        st.session_state.dados[t_ativa]["pocos"].append(novo_poco)
+                        salvar_dados(st.session_state.dados)
+                        st.rerun()
 
     with aba2:
         st.subheader("📅 Histórico Mensal")
-        target_turma = st.session_state.turma if st.session_state.perfil == "TURMA" else st.selectbox("Selecione o Colaborador", TURMAS)
-        
+        target_turma = st.session_state.turma if st.session_state.perfil == "TURMA" else st.selectbox("Selecione o colaborador", TURMAS)
         hist = st.session_state.dados[target_turma]["historico"]
         pocos = st.session_state.dados[target_turma].get("pocos", [])
         meses = sorted(list(set(t.get("ano_mes", datetime.now().strftime("%Y-%m")) for t in hist + pocos)), reverse=True)
         
         if meses:
             mes_sel = st.selectbox("Escolha o mês", meses)
-            sub_f, sub_p = st.tabs(["💰 Custos", "🚰 Poços"])
-            
+            sub_f, sub_p = st.tabs(["💰 Controle de Custos", "🚰 Poços Executados"])
             with sub_f:
                 t_mes = [t for t in hist if t.get("ano_mes") == mes_sel]
-                resumo_fin = f"Relatório Financeiro - {target_turma} - {mes_sel}\n\n" + "\n".join([f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes])
-                st.download_button("📥 Baixar Relatório Financeiro", resumo_fin, f"financeiro_{target_turma}_{mes_sel}.txt")
+                resumo = "RELATÓRIO FINANCEIRO\n\n" + "\n".join([f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes])
+                st.download_button("📥 Baixar Relatório", "\ufeff" + resumo, f"financeiro_{target_turma}.txt")
                 for t in reversed(t_mes): st.write(f"{t['data']} - {t['categoria']} - R${t['valor']:.2f}")
-
             with sub_p:
                 p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel]
                 if p_mes:
-                    sel_poco = st.selectbox("Escolha o poço para baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes])
-                    p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco)
-                    resumo_poco = f"RELATÓRIO DE POÇO\nData: {p_baixar['data']}\nCliente: {p_baixar['cliente']}\nCidade: {p_baixar['cidade']}\nMetragem: {p_baixar['metragem']}\nFuncionários: {p_baixar['funcionarios']}\nMaterial: {p_baixar['material']}"
-                    st.download_button("📥 Baixar este Poço (PDF/TXT)", resumo_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.txt")
-                    for p in reversed(p_mes): st.write(f"📍 {p['data']} - {p['cliente']} ({p['cidade']})")
-                else: st.caption("Nenhum poço encontrado.")
+                    opcoes = [f"{p.get('data', 'S/D')} - {p.get('cliente', 'Sem Nome')}" for p in p_mes]
+                    sel = st.selectbox("Escolha o poço", opcoes)
+                    p_sel = next(p for p in p_mes if f"{p.get('data', 'S/D')} - {p.get('cliente', 'Sem Nome')}" == sel)
+                    resumo_p = f"RELATÓRIO DE POÇO\nData: {p_sel.get('data')}\nCliente: {p_sel.get('cliente')}\nCidade: {p_sel.get('cidade')}\nMetragem: {p_sel.get('metragem')}\nMaterial: {p_sel.get('material')}\nEquipe: {p_sel.get('funcionarios')}"
+                    st.download_button("📥 Baixar Relatório do Poço", "\ufeff" + resumo_p, f"poco_{p_sel.get('cliente', 'poco')}.txt")
+                    for p in reversed(p_mes): st.write(f"📍 {p.get('data')} - {p.get('cliente')} ({p.get('cidade')})")
 
     if st.session_state.perfil == "ADM":
         with aba3[0]:
