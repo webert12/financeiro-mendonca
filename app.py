@@ -228,7 +228,7 @@ else:
                         st.session_state.dados[t_ativa]["pocos"].append({"data": datetime.now().strftime("%d/%m/%Y"), "ano_mes": datetime.now().strftime("%Y-%m"), "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun}) 
                         salvar_dados(st.session_state.dados); st.rerun()
 
-    # --- ABA: MÍDIAS (SISTEMA ULTRA ESTÁVEL DE SALVAMENTO AUTOMÁTICO) ---
+    # --- ABA: MÍDIAS ---
     with aba2:
         st.subheader("📷 Gerenciamento de Mídias")
         if st.session_state.perfil == "ADM":
@@ -236,18 +236,15 @@ else:
         else:
             t_ativa = st.session_state.turma
             
-            # Exibe mensagem de sucesso caso venha de um salvamento recente
             if st.session_state.msg_sucesso:
                 st.success(st.session_state.msg_sucesso)
                 st.session_state.msg_sucesso = None
 
-            # Seleção de Categoria do Poço para vincular ao envio
             pocos_existentes = [f"{p['cliente']} ({p['cidade']})" for p in st.session_state.dados[t_ativa].get("pocos", [])]
             categoria_poco_sel = st.selectbox("📍 Vincular esta mídia a qual Poço/Cliente?", ["Geral / Sem Poço Específico"] + pocos_existentes)
             
             st.divider()
             
-            # Opção 1: Câmera nativa para foto com Auto-Save
             st.write("**Opção 1: Tirar Foto 📸**")
             st.caption("O salvamento é automático assim que o carregamento terminar.")
             foto_capturada = st.file_uploader(
@@ -274,13 +271,12 @@ else:
                 st.session_state.dados[t_ativa]["midias"].append(nova_midia)
                 salvar_dados(st.session_state.dados)
                 
-                st.session_state.foto_key += 1  # Limpa o componente de upload
+                st.session_state.foto_key += 1
                 st.session_state.msg_sucesso = "📸 Foto salva com sucesso no sistema!"
                 st.rerun()
 
             st.divider()
 
-            # Opção 2: Câmera nativa para vídeo com Auto-Save (Correção Definitiva)
             st.write("**Opção 2: Gravar Vídeo 🎥**")
             st.caption("O vídeo é gravado automaticamente assim que o envio chegar em 100%.")
             video_gravado = st.file_uploader(
@@ -308,11 +304,10 @@ else:
                 st.session_state.dados[t_ativa]["midias"].append(nova_midia)
                 salvar_dados(st.session_state.dados)
                 
-                st.session_state.video_key += 1  # Limpa o componente de upload
+                st.session_state.video_key += 1
                 st.session_state.msg_sucesso = "🎥 Vídeo carregado e salvo com sucesso!"
                 st.rerun()
 
-            # --- SCRIPT DE INJEÇÃO (HTML5 CAPTURE) ---
             st.markdown("""
                 <iframe src="about:blank" style="display:none;" onload="
                     const doc = window.parent.document;
@@ -346,7 +341,7 @@ else:
             with sub_f: 
                 t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
                 linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_mes]
-                pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {target_turma} - {mes_sel}", lines_pdf_fin)
+                pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {target_turma} - {mes_sel}", linhas_pdf_fin)
                 
                 st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf") 
                 for t in reversed(t_mes): 
@@ -374,18 +369,13 @@ else:
                 else: 
                     st.caption("Nenhum poço encontrado.")
             
-            # Sub-aba organizada e filtrada previamente por Poço Escolhido
             with sub_m:
                 m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
                 
                 if m_mes:
-                    # Coleta dinamicamente os poços vinculados às mídias salvas do mês atual
                     pocos_disponiveis = sorted(list(set(m.get("poco", "Geral / Sem Poço Específico") for m in m_mes)))
-                    
-                    # Filtro prévio obrigatório
                     poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar fotos e vídeos:", pocos_disponiveis)
                     
-                    # Filtra apenas mídias do poço selecionado
                     m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
                     
                     fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
