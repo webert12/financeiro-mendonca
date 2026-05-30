@@ -460,7 +460,6 @@ else:
                                     st.success("Relatório atualizado com sucesso!")
                                     st.rerun()
                         
-                        # CORREÇÃO EFETUADA: Alterado de lines_pdf_poco para linhas_pdf_poco (Coerência com a chamada)
                         linhas_pdf_poco = [
                             f"Data de Registro: {p_baixar['data']}", 
                             f"Cliente: {p_baixar['cliente']}", 
@@ -482,7 +481,6 @@ else:
                         m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
                         
                         fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
-                        # CORREÇÃO EFETUADA: Ajustado de "videos_filtradas" para "videos_filtrados" (Correção de sintaxe/crash)
                         videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
                         
                         st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
@@ -684,4 +682,64 @@ else:
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        if st.checkbox("✏️ Editar este Relatório", key="edit_mode_turma
+                        if st.checkbox("✏️ Editar este Relatório", key="edit_mode_turma"):
+                            with st.form("form_editar_poco_turma"):
+                                st.markdown("<h5 style='color:#38bdf8; margin-bottom:15px;'>Painel de Edição Limpo</h5>", unsafe_allow_html=True)
+                                ec1, ec2 = st.columns(2)
+                                novo_cl = ec1.text_input("Cliente", value=p_baixar['cliente'])
+                                novo_ci = ec2.text_input("Cidade", value=p_baixar['cidade'])
+                                novo_mt = ec1.text_input("Metragem Perfurada", value=p_baixar['metragem'])
+                                novo_fun = ec2.text_input("Equipe / Funcionários", value=p_baixar['funcionarios'])
+                                novo_mat = st.text_area("Materiais Utilizados", value=p_baixar['material'], rows=3)
+                                
+                                if st.form_submit_button("💾 Salvar Alterações"):
+                                    idx_original = next(i for i, p in enumerate(st.session_state.dados[t_ativa]["pocos"]) if id(p) == id(p_baixar))
+                                    st.session_state.dados[t_ativa]["pocos"][idx_original].update({
+                                        "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun
+                                    })
+                                    salvar_dados(st.session_state.dados)
+                                    st.success("Relatório corrigido com sucesso!")
+                                    st.rerun()
+                        
+                        linhas_pdf_poco = [
+                            f"Data de Registro: {p_baixar['data']}", 
+                            f"Cliente: {p_baixar['cliente']}", 
+                            f"Cidade: {p_baixar['cidade']}",
+                            f"Metragem Perfurada: {p_baixar['metragem']} metros", 
+                            f"Funcionarios na Obra: {p_baixar['funcionarios']}", 
+                            f"Materiais Utilizados: {p_baixar['material']}"
+                        ]
+                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
+                        st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
+                    else: 
+                        st.caption("Nenhum poço encontrado.")
+                
+                with sub_m:
+                    m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
+                    if m_mes:
+                        pocos_disponiveis = sorted(list(set(m.get("poco", "Geral / Sem Poço Específico") for m in m_mes)))
+                        poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar fotos e vídeos:", pocos_disponiveis, key="poco_sel_midia_turma")
+                        m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
+                        
+                        fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                        videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                        
+                        st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
+                        with st.expander("📸 FOTOS SALVAS"):
+                            if fotos_filtradas:
+                                attach_list = ["uploaded:0636af18-01cb-48b5-a290-8e5dfe23d798-92602835-24a0-4dc2-b164-f5b8b9adc977", "uploaded:8f7f0f75-ed31-46c4-b59a-5085c1690a74-4d34db2d-d7b1-4fee-a524-8febf190ce69", "uploaded:429348.jpg-f935305e-d021-4c0f-b14a-93645dcaddbd"]
+                                for f in reversed(fotos_filtradas):
+                                    st.write(f"📅 {f['data']}")
+                                    if os.path.exists(f['caminho']): st.image(f['caminho'], use_container_width=True)
+                                    st.divider()
+                            else: st.caption("Nenhuma foto localizada para este poço.")
+                        with st.expander("🎥 VÍDEOS SALVOS"):
+                            if videos_filtrados:
+                                for v in reversed(videos_filtrados):
+                                    st.write(f"📅 {v['data']}")
+                                    if os.path.exists(v['caminho']): st.video(v['caminho'])
+                                    st.divider()
+                            else: st.caption("Nenhum vídeo localizado para este poço.")
+                    else: st.caption("Nenhuma mídia registrada para este colaborador neste mês.")
+            else:
+                st.info("Nenhum registro encontrado.")
