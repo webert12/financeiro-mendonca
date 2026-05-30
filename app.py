@@ -151,7 +151,7 @@ st.markdown("""
         text-align: center !important;
     }
     
-    /* Ajustes Específicos para Inputs Numéricos ou Alinhamentos de Caixa */
+    /* Inputs focados */
     div[data-testid="stTextInput"] input:focus, div[data-testid="stSelectbox"] div[data-baseweb="select"]:focus {
         border-color: #38bdf8 !important;
     }
@@ -176,7 +176,7 @@ st.markdown("""
     }
     div[data-testid="stFileUploaderDropzone"] span, 
     div[data-testid="stFileUploaderDropzone"] small {
-        display: none !important; /* Remove textos nativos em inglês */
+        display: none !important;
     }
     div[data-testid="stFileUploaderDropzone"] button {
         font-size: 0 !important;
@@ -490,7 +490,7 @@ else:
                         m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
                         
                         fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
-                        videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                        videos_filtradas = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
                         
                         st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
                         with st.expander("📸 FOTOS SALVAS"):
@@ -502,8 +502,8 @@ else:
                             else: st.caption("Nenhuma foto localizada.")
                         
                         with st.expander("🎥 VÍDEOS SALVOS"):
-                            if videos_filtrados:
-                                for v in reversed(videos_filtrados):
+                            if videos_filtradas:
+                                for v in reversed(videos_filtradas):
                                     st.write(f"📅 {v['data']}")
                                     if os.path.exists(v['caminho']): st.video(v['caminho'])
                                     st.divider()
@@ -661,7 +661,7 @@ else:
                         if dias_pdf_sel:
                             t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
                             linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
-                            pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa}", lines_pdf_fin)
+                            pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa}", linhas_pdf_fin)
                             st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{t_ativa}_{mes_sel}.pdf", "application/pdf") 
                         else:
                             st.warning("Selecione pelo menos um dia para gerar o relatório PDF.")
@@ -670,84 +670,4 @@ else:
                         dia_sel = st.selectbox("🔍 Escolha o dia para analisar custos na tela:", dias_disponiveis, key="dia_sel_turma_custos")
                         t_dia = [t for t in t_mes if t.get('data', '')[:5] == dia_sel]
                         for t in reversed(t_dia): 
-                            st.markdown(f"<div style='background:#0f172a; padding:10px; border-radius:8px; margin-bottom:8px; border-left:3px solid #0284c7;'>💵 <b>{t['data']}</b> - {t['categoria']} - <span style='color:#38bdf8; font-weight:600;'>R${t['valor']:.2f}</span></div>", unsafe_allow_html=True)
-                    else:
-                        st.caption("Nenhum custo registrado.")
-                
-                with sub_p: 
-                    p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel] 
-                    if p_mes: 
-                        sel_poco = st.selectbox("Escolha o poço para analisar/baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes], key="sel_poco_turma") 
-                        p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco) 
-                        
-                        st.markdown(f"""
-                        <div style='background-color: #0f172a; padding: 18px; border-radius: 12px; border-left: 5px solid #0284c7; margin-bottom: 15px; text-align: left !important;'>
-                            <h4 style='margin-top:0; color:#38bdf8; font-size:1.1rem; text-align: center !important;'>📋 Dados Atuais do Relatório</h4>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>📍 Cliente:</span> <b>{p_baixar['cliente']}</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>🏙️ Cidade:</span> <b>{p_baixar['cidade']}</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>📏 Metragem Perfurada:</span> <b>{p_baixar['metragem']} metros</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>👥 Funcionários:</span> <b>{p_baixar['funcionarios']}</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>🧱 Materiais Usados:</span><br><i style='color:#f1f5f9;'>{p_baixar['material']}</i></p>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        
-                        if st.checkbox("✏️ Editar este Relatório", key="edit_mode_turma"):
-                            with st.form("form_editar_poco_turma"):
-                                st.markdown("<h5 style='color:#38bdf8; margin-bottom:15px;'>Painel de Edição Limpo</h5>", unsafe_allow_html=True)
-                                ec1, ec2 = st.columns(2)
-                                novo_cl = ec1.text_input("Cliente", value=p_baixar['cliente'])
-                                novo_ci = ec2.text_input("Cidade", value=p_baixar['cidade'])
-                                novo_mt = ec1.text_input("Metragem Perfurada", value=p_baixar['metragem'])
-                                novo_fun = ec2.text_input("Equipe / Funcionários", value=p_baixar['funcionarios'])
-                                novo_mat = st.text_area("Materiais Utilizados", value=p_baixar['material'], rows=3)
-                                
-                                if st.form_submit_button("💾 Salvar Alterações"):
-                                    idx_original = next(i for i, p in enumerate(st.session_state.dados[t_ativa]["pocos"]) if id(p) == id(p_baixar))
-                                    st.session_state.dados[t_ativa]["pocos"][idx_original].update({
-                                        "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun
-                                    })
-                                    salvar_dados(st.session_state.dados)
-                                    st.success("Relatório corrigido com sucesso!")
-                                    st.rerun()
-                        
-                        linhas_pdf_poco = [
-                            f"Data de Registro: {p_baixar['data']}", 
-                            f"Cliente: {p_baixar['cliente']}", 
-                            f"Cidade: {p_baixar['cidade']}",
-                            f"Metragem Perfurada: {p_baixar['metragem']} metros", 
-                            f"Funcionarios na Obra: {p_baixar['funcionarios']}", 
-                            f"Materiais Utilizados: {p_baixar['material']}"
-                        ]
-                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
-                        st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
-                    else: 
-                        st.caption("Nenhum poço encontrado.")
-                
-                with sub_m:
-                    m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
-                    if m_mes:
-                        pocos_disponiveis = sorted(list(set(m.get("poco", "Geral / Sem Poço Específico") for m in m_mes)))
-                        poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar fotos e vídeos:", pocos_disponiveis, key="poco_sel_midia_turma")
-                        m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
-                        
-                        fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
-                        videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
-                        
-                        st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
-                        with st.expander("📸 FOTOS SALVAS"):
-                            if fotos_filtradas:
-                                for f in reversed(fotos_filtradas):
-                                    st.write(f"📅 {f['data']}")
-                                    if os.path.exists(f['caminho']): st.image(f['caminho'], use_container_width=True)
-                                    st.divider()
-                            else: st.caption("Nenhuma foto localizada para este poço.")
-                        with st.expander("🎥 VÍDEOS SALVOS"):
-                            if videos_filtrados:
-                                for v in reversed(videos_filtrados):
-                                    st.write(f"📅 {v['data']}")
-                                    if os.path.exists(v['caminho']): st.video(v['caminho'])
-                                    st.divider()
-                            else: st.caption("Nenhum vídeo localizado para este poço.")
-                    else: st.caption("Nenhuma mídia registrada para este colaborador neste mês.")
-            else:
-                st.info("Nenhum registro encontrado.")
+                            st.markdown(f"<div style='background:#0f172a; padding:10px; border-radius:8px; margin-bottom:8px; border-left:3px solid #0284c7;'>💵 <b>{t['data']}</b> - {t['categoria']} - <span style='
