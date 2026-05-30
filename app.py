@@ -9,22 +9,40 @@ from reportlab.pdfgen import canvas
 # --- CONFIGURAÇÃO VISUAL ESTILO "APK" PREMIUM ---
 st.set_page_config(page_title="Mendonça Poços", page_icon="💧", layout="centered", initial_sidebar_state="collapsed")
 
-# Estilização profissional de alto impacto (UI/UX)
+# Estilização profissional com foco em centralização absoluta e tradução total (UI/UX)
 st.markdown("""
 <style>
     /* Importação da Fonte Inter */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
-    /* Reset Geral da Página */
+    /* Reset Geral da Página e Centralização de Texto Base */
     .stApp {
         background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
         font-family: 'Inter', sans-serif !important;
         color: #f8fafc !important;
+        text-align: center !important;
     }
     
-    /* Customização Global de Títulos */
-    h1, h2, h3, h4, h5, h6, p, label, span {
+    /* Customização Global para Forçar Centralização */
+    h1, h2, h3, h4, h5, h6, p, span {
         font-family: 'Inter', sans-serif !important;
+        text-align: center !important;
+        width: 100% !important;
+    }
+    
+    /* Centralizar Labels dos Widgets */
+    label[data-testid="stWidgetLabel"] {
+        justify-content: center !important;
+        text-align: center !important;
+        display: flex !important;
+        width: 100% !important;
+        color: #e2e8f0 !important;
+        font-weight: 500 !important;
+    }
+
+    /* Centralizar Opções do Seletor de Rádio (Método de Pagamento) */
+    div[data-testid="stRadio"] > div {
+        justify-content: center !important;
     }
     
     /* Transformação dos Cards de Métricas */
@@ -34,10 +52,10 @@ st.markdown("""
         border-radius: 12px !important;
         padding: 16px 20px !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-        transition: transform 0.2s ease;
-    }
-    div[data-testid="stMetricContainer"]:hover {
-        transform: translateY(-2px);
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
     div[data-testid="stMetricLabel"] {
         color: #94a3b8 !important;
@@ -52,7 +70,7 @@ st.markdown("""
         font-size: 1.8rem !important;
     }
 
-    /* Estilização Avançada de Botões */
+    /* Estilização de Botões */
     div.stButton > button {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
@@ -65,14 +83,12 @@ st.markdown("""
         width: 100% !important;
         box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25) !important;
         transition: all 0.2s ease-in-out !important;
+        margin: 0 auto !important;
+        display: block !important;
     }
     div.stButton > button:hover {
         background: linear-gradient(135deg, #0369a1 0%, #075985 100%) !important;
         transform: translateY(-2px) !important;
-        box-shadow: 0 6px 15px rgba(2, 132, 199, 0.4) !important;
-    }
-    div.stButton > button:active {
-        transform: translateY(1px) !important;
     }
     
     /* Botões Secundários */
@@ -82,18 +98,10 @@ st.markdown("""
         color: #f1f5f9 !important;
         box-shadow: none !important;
     }
-    div.stButton > button[kind="secondary"]:hover {
-        background: #475569 !important;
-        border-color: #64748b !important;
-    }
     
     /* Botões de Perigo/Reset */
     div.stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
-        box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25) !important;
-    }
-    div.stButton > button[kind="primary"]:hover {
-        background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
     }
 
     /* Formulários e Containers */
@@ -103,6 +111,7 @@ st.markdown("""
         border-radius: 16px !important;
         padding: 24px !important;
         box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3) !important;
+        text-align: center !important;
     }
     
     /* Abas/Tabs Customizadas */
@@ -111,23 +120,73 @@ st.markdown("""
         border-radius: 12px !important;
         padding: 4px !important;
         margin-bottom: 20px !important;
+        display: flex !important;
+        justify-content: center !important;
     }
     button[data-testid="stTabBarTab"] {
         border-radius: 8px !important;
         color: #94a3b8 !important;
-        transition: all 0.2s ease !important;
     }
     button[data-testid="stTabBarTab"][aria-selected="true"] {
         background-color: #0284c7 !important;
         color: #ffffff !important;
     }
     
-    /* Inputs de Texto e Seletores */
+    /* Inputs de Texto e Seletores Centralizados */
     div[data-testid="stTextInput"] input, div[data-testid="stSelectbox"] div[data-baseweb="select"] {
         background-color: #0f172a !important;
         border: 1px solid #334155 !important;
         border-radius: 8px !important;
         color: #f8fafc !important;
+        text-align: center !important;
+    }
+    
+    /* --- CORREÇÃO DEFINITIVA DO ARQUIVO DE UPLOAD (IMAGEM 429348.JPG) --- */
+    div[data-testid="stFileUploader"] {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 100% !important;
+    }
+    
+    div[data-testid="stFileUploaderDropzone"] {
+        justify-content: center !important;
+        align-items: center !important;
+        text-align: center !important;
+        padding: 20px !important;
+        background-color: #0f172a !important;
+        border: 2px dashed #334155 !important;
+        border-radius: 12px !important;
+        width: 100% !important;
+    }
+
+    /* Oculta os textos nativos do Streamlit que ficavam em inglês ou quebrando layout */
+    div[data-testid="stFileUploaderDropzone"] span, 
+    div[data-testid="stFileUploaderDropzone"] small {
+        display: none !important;
+    }
+    
+    /* Remove a quebra e o bug do 'uploadupload' e cria um botão limpo e centralizado */
+    div[data-testid="stFileUploaderDropzone"] button {
+        font-size: 0 !important; /* Apaga o texto 'Browse files' nativo */
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        padding: 10px 20px !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 10px rgba(2, 132, 199, 0.2) !important;
+        cursor: pointer !important;
+        margin: 5px auto !important;
+        display: inline-block !important;
+    }
+    
+    /* Injeta o texto perfeito traduzido em Português do Brasil */
+    div[data-testid="stFileUploaderDropzone"] button::after {
+        content: "✨ Selecionar Arquivo" !important;
+        font-size: 0.9rem !important;
+        font-weight: 600 !important;
+        display: block !important;
     }
     
     /* Badge de Usuário Ativo */
@@ -140,7 +199,9 @@ st.markdown("""
         color: #38bdf8;
         display: inline-flex;
         align-items: center;
+        justify-content: center;
         gap: 8px;
+        margin: 0 auto !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -489,14 +550,15 @@ else:
                     
                     st.markdown("<br><h5 style='color:#38bdf8; margin:0;'>Anexar Mídias desta Obra 📷</h5>", unsafe_allow_html=True)
                     
+                    # Informações de formato adicionadas ao rótulo em Português Br
                     foto_capturada = st.file_uploader(
-                        "Opção 1: Capturar ou escolher Foto:", 
+                        "Opção 1: Capturar Foto (Tamanho Máx: 200MB | Formatos: JPG, PNG)", 
                         type=["jpg", "jpeg", "png"], 
                         key=f"foto_auto_{st.session_state.foto_key}"
                     )
                     
                     video_gravado = st.file_uploader(
-                        "Opção 2: Gravar ou escolher Vídeo:", 
+                        "Opção 2: Gravar Vídeo (Tamanho Máx: 200MB | Formatos: MP4, MOV, AVI)", 
                         type=["mp4", "mov", "avi", "3gp"], 
                         key=f"video_auto_{st.session_state.video_key}"
                     )
