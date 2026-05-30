@@ -9,13 +9,13 @@ from reportlab.pdfgen import canvas
 # --- CONFIGURAÇÃO VISUAL ESTILO "APK" PREMIUM ---
 st.set_page_config(page_title="Mendonça Poços", page_icon="💧", layout="centered", initial_sidebar_state="collapsed")
 
-# Estilização profissional com foco em centralização absoluta e tradução total (UI/UX)
+# Estilização profissional de alto padrão (UI/UX focada em Mobile-First e Desktop)
 st.markdown("""
 <style>
-    /* Importação da Fonte Inter */
+    /* Importação da Fonte Premium Inter */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
-    /* Reset Geral da Página e Centralização de Texto Base */
+    /* Reset e Fundo Gradiente Fluido */
     .stApp {
         background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
         font-family: 'Inter', sans-serif !important;
@@ -23,14 +23,14 @@ st.markdown("""
         text-align: center !important;
     }
     
-    /* Customização Global para Forçar Centralização e Fluidez */
+    /* Centralização Absoluta de Títulos e Textos */
     h1, h2, h3, h4, h5, h6, p, span {
         font-family: 'Inter', sans-serif !important;
         text-align: center !important;
         width: 100% !important;
     }
     
-    /* Centralizar Labels dos Widgets */
+    /* Labels dos Formulários Centralizados e Alinhados */
     label[data-testid="stWidgetLabel"] {
         justify-content: center !important;
         text-align: center !important;
@@ -38,6 +38,8 @@ st.markdown("""
         width: 100% !important;
         color: #e2e8f0 !important;
         font-weight: 500 !important;
+        font-size: 0.95rem !important;
+        margin-bottom: 6px !important;
     }
 
     /* Centralizar Opções do Seletor de Rádio (Método de Pagamento) */
@@ -45,13 +47,13 @@ st.markdown("""
         justify-content: center !important;
     }
     
-    /* Transformação dos Cards de Métricas */
+    /* Customização Luxuosa dos Cards de Métricas */
     div[data-testid="stMetricContainer"] {
         background: #1e293b !important;
         border: 1px solid #334155 !important;
-        border-radius: 12px !important;
-        padding: 16px 20px !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        border-radius: 14px !important;
+        padding: 18px 20px !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
         display: flex !important;
         flex-direction: column !important;
         align-items: center !important;
@@ -62,15 +64,15 @@ st.markdown("""
         font-size: 0.85rem !important;
         font-weight: 600 !important;
         text-transform: uppercase !important;
-        letter-spacing: 0.05em !important;
+        letter-spacing: 0.06em !important;
     }
     div[data-testid="stMetricValue"] {
         color: #38bdf8 !important;
         font-weight: 700 !important;
-        font-size: 1.8rem !important;
+        font-size: 1.75rem !important;
     }
 
-    /* Estilização de Botões */
+    /* Estilização Geral de Botões Modernos */
     div.stButton > button {
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
@@ -81,7 +83,7 @@ st.markdown("""
         font-size: 0.95rem !important;
         letter-spacing: 0.02em !important;
         width: 100% !important;
-        box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25) !important;
+        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25) !important;
         transition: all 0.2s ease-in-out !important;
         margin: 0 auto !important;
         display: block !important;
@@ -89,6 +91,7 @@ st.markdown("""
     div.stButton > button:hover {
         background: linear-gradient(135deg, #0369a1 0%, #075985 100%) !important;
         transform: translateY(-2px) !important;
+        box-shadow: 0 6px 15px rgba(2, 132, 199, 0.35) !important;
     }
     
     /* Botões Secundários */
@@ -98,13 +101,18 @@ st.markdown("""
         color: #f1f5f9 !important;
         box-shadow: none !important;
     }
+    div.stButton > button[kind="secondary"]:hover {
+        background: #475569 !important;
+        transform: translateY(-1px) !important;
+    }
     
     /* Botões de Perigo/Reset */
     div.stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25) !important;
     }
 
-    /* Formulários e Containers */
+    /* Formulários e Blocos Containers */
     div[data-testid="stForm"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -118,7 +126,7 @@ st.markdown("""
     div[data-testid="stTabBar"] {
         background-color: #111827 !important;
         border-radius: 12px !important;
-        padding: 4px !important;
+        padding: 5px !important;
         margin-bottom: 20px !important;
         display: flex !important;
         justify-content: center !important;
@@ -126,13 +134,15 @@ st.markdown("""
     button[data-testid="stTabBarTab"] {
         border-radius: 8px !important;
         color: #94a3b8 !important;
+        font-weight: 500 !important;
     }
     button[data-testid="stTabBarTab"][aria-selected="true"] {
         background-color: #0284c7 !important;
         color: #ffffff !important;
+        font-weight: 600 !important;
     }
     
-    /* Inputs de Texto e Seletores Centralizados */
+    /* Inputs de Texto, Seletores e Áreas de Texto */
     div[data-testid="stTextInput"] input, div[data-testid="stSelectbox"] div[data-baseweb="select"], div[data-testid="stTextArea"] textarea {
         background-color: #0f172a !important;
         border: 1px solid #334155 !important;
@@ -141,7 +151,12 @@ st.markdown("""
         text-align: center !important;
     }
     
-    /* --- CORREÇÃO DEFINITIVA DO ARQUIVO DE UPLOAD --- */
+    /* Ajustes Específicos para Inputs Numéricos ou Alinhamentos de Caixa */
+    div[data-testid="stTextInput"] input:focus, div[data-testid="stSelectbox"] div[data-baseweb="select"]:focus {
+        border-color: #38bdf8 !important;
+    }
+    
+    /* --- CORREÇÃO E TRADUÇÃO DO SELETOR DE ARQUIVOS --- */
     div[data-testid="stFileUploader"] {
         display: flex !important;
         flex-direction: column !important;
@@ -149,7 +164,6 @@ st.markdown("""
         justify-content: center !important;
         width: 100% !important;
     }
-    
     div[data-testid="stFileUploaderDropzone"] {
         justify-content: center !important;
         align-items: center !important;
@@ -160,16 +174,12 @@ st.markdown("""
         border-radius: 12px !important;
         width: 100% !important;
     }
-
-    /* Oculta os textos nativos do Streamlit que ficavam em inglês ou quebrando layout */
     div[data-testid="stFileUploaderDropzone"] span, 
     div[data-testid="stFileUploaderDropzone"] small {
-        display: none !important;
+        display: none !important; /* Remove textos nativos em inglês */
     }
-    
-    /* Remove a quebra e o bug do 'uploadupload' e cria um botão limpo e centralizado */
     div[data-testid="stFileUploaderDropzone"] button {
-        font-size: 0 !important; /* Apaga o texto 'Browse files' nativo */
+        font-size: 0 !important;
         background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
         color: #ffffff !important;
         border: none !important;
@@ -180,8 +190,6 @@ st.markdown("""
         margin: 5px auto !important;
         display: inline-block !important;
     }
-    
-    /* Injeta o texto perfeito traduzido em Português do Brasil */
     div[data-testid="stFileUploaderDropzone"] button::after {
         content: "✨ Selecionar Arquivo" !important;
         font-size: 0.9rem !important;
@@ -189,11 +197,11 @@ st.markdown("""
         display: block !important;
     }
     
-    /* Badge de Usuário Ativo */
+    /* Badge Superior de Usuário Ativo */
     .user-badge {
         background: rgba(2, 132, 199, 0.15);
         border: 1px solid rgba(2, 132, 199, 0.3);
-        padding: 8px 16px;
+        padding: 8px 18px;
         border-radius: 30px;
         font-weight: 600;
         color: #38bdf8;
@@ -201,7 +209,7 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         gap: 8px;
-        margin: 0 auto !important;
+        margin: 0 auto 15px auto !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -233,12 +241,12 @@ def exportar_para_pdf(titulo, linhas_conteudo):
     
     # Design do Cabeçalho do PDF
     c.setFont("Helvetica-Bold", 16)
-    c.setFillColorRGB(0.0, 0.28, 0.67)  # Azul corporativo
+    c.setFillColorRGB(0.0, 0.28, 0.67)
     c.drawString(50, 750, titulo.upper())
     c.setStrokeColorRGB(0.5, 0.5, 0.5)
     c.line(50, 740, 550, 740)
     
-    # Configuração do texto
+    # Configuração do corpo de texto
     c.setFont("Helvetica", 11)
     c.setFillColorRGB(0, 0, 0)
     y = 710
@@ -290,7 +298,7 @@ if 'turma' not in st.session_state:
 if 'selecionou_usuario' not in st.session_state:
     st.session_state.selecionou_usuario = None
 
-# Chaves dinâmicas para resetar os uploaders de mídia e mensagens persistentes
+# Chaves dinâmicas para resetar uploaders e mensagens
 if 'foto_key' not in st.session_state:
     st.session_state.foto_key = 0
 if 'video_key' not in st.session_state:
@@ -370,6 +378,7 @@ if st.session_state.perfil is None:
         if st.button("📊 Painel Geral Consolidado"): 
             st.session_state.selecionou_usuario = None 
             st.rerun()
+
 # --- INTERFACE PRINCIPAL OPERACIONAL ---
 else:
     c_status, c_sair = st.columns([2.5, 1.5])
@@ -411,7 +420,7 @@ else:
                         if dias_pdf_sel:
                             t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
                             linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
-                            pdf_financeiro = exportar_para_pdf(f"Custos - {target_turma} - Filtro customizado", linhas_pdf_fin)
+                            pdf_financeiro = exportar_para_pdf(f"Custos - {target_turma} - Filtro", linhas_pdf_fin)
                             st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf")
                         else:
                             st.warning("Selecione ao menos 1 dia para gerar o PDF.")
@@ -561,13 +570,13 @@ else:
                     st.markdown("<br><h5 style='color:#38bdf8; margin:0;'>Anexar Mídias desta Obra 📷</h5>", unsafe_allow_html=True)
                     
                     foto_capturada = st.file_uploader(
-                        "Opção 1: Capturar Foto (Tamanho Máx: 200MB | Formatos: JPG, PNG)", 
+                        "Opção 1: Capturar Foto (Tamanho Máx: 200MB)", 
                         type=["jpg", "jpeg", "png"], 
                         key=f"foto_auto_{st.session_state.foto_key}"
                     )
                     
                     video_gravado = st.file_uploader(
-                        "Opção 2: Gravar Vídeo (Tamanho Máx: 200MB | Formatos: MP4, MOV, AVI)", 
+                        "Opção 2: Gravar Vídeo (Tamanho Máx: 200MB)", 
                         type=["mp4", "mov", "avi", "3gp"], 
                         key=f"video_auto_{st.session_state.video_key}"
                     )
@@ -652,7 +661,7 @@ else:
                         if dias_pdf_sel:
                             t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
                             linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
-                            pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa}", linhas_pdf_fin)
+                            pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa}", lines_pdf_fin)
                             st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{t_ativa}_{mes_sel}.pdf", "application/pdf") 
                         else:
                             st.warning("Selecione pelo menos um dia para gerar o relatório PDF.")
@@ -727,7 +736,6 @@ else:
                         st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
                         with st.expander("📸 FOTOS SALVAS"):
                             if fotos_filtradas:
-                                attach_list = ["uploaded:0636af18-01cb-48b5-a290-8e5dfe23d798-92602835-24a0-4dc2-b164-f5b8b9adc977", "uploaded:8f7f0f75-ed31-46c4-b59a-5085c1690a74-4d34db2d-d7b1-4fee-a524-8febf190ce69", "uploaded:429348.jpg-f935305e-d021-4c0f-b14a-93645dcaddbd"]
                                 for f in reversed(fotos_filtradas):
                                     st.write(f"📅 {f['data']}")
                                     if os.path.exists(f['caminho']): st.image(f['caminho'], use_container_width=True)
