@@ -197,7 +197,7 @@ st.markdown("""
         display: block !important;
     }
     
-    /* Badge Superior de Usuário Ativo */
+        /* Badge Superior de Usuário Ativo */
     .user-badge {
         background: rgba(2, 132, 199, 0.15);
         border: 1px solid rgba(2, 132, 199, 0.3);
@@ -211,8 +211,15 @@ st.markdown("""
         gap: 8px;
         margin: 0 auto 15px auto !important;
     }
+
+    /* 🔥 CORREÇÃO DE NITIDEZ MÁXIMA PARA A LOGO (Evita borrão em telas AMOLED/Retina) */
+    img {
+        image-rendering: -webkit-optimize-contrast !important; /* Chrome, Safari, Celulares */
+        image-rendering: crisp-edges !important;               /* Firefox */
+    }
 </style>
 """, unsafe_allow_html=True)
+
 
 # CONFIGURAÇÃO DO FUSO HORÁRIO DE BRASÍLIA (UTC-3)
 FUSO_BRASILIA = timezone(timedelta(hours=-3))
@@ -308,9 +315,10 @@ if 'msg_sucesso' not in st.session_state:
 
 # --- DESIGN DA LOGO DA EMPRESA ---
 def desenhar_logo():
-    st.markdown("<div style='text-align: center; margin-bottom: 25px;'>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; margin-bottom: 20px;'>", unsafe_allow_html=True)
     if os.path.exists("logo.png"):
-        st.image("logo.png", width=120)
+        # Alterado para 160px para casar perfeitamente com a proporção limpa de 500x300px
+        st.image("logo.png", width=160)
     else:
         st.markdown("<h1 style='font-size: 55px; margin: 0; filter: drop-shadow(0px 4px 10px rgba(56,189,248,0.3));'>💧</h1>", unsafe_allow_html=True)
     st.markdown("<h2 style='color: #38bdf8; font-family: sans-serif; font-weight: 800; margin: 8px 0 2px 0; letter-spacing: 1px;'>MENDONÇA POÇOS</h2>", unsafe_allow_html=True)
