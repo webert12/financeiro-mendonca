@@ -53,13 +53,12 @@ def exportar_para_pdf(titulo, linhas_conteudo):
 
 # --- FUNÇÕES DE ARMAZENAMENTO E MIGRAÇÃO SEGURA ---
 def carregar_dados():
-    # Senhas antigas usadas apenas para a primeira carga/migração automática de segurança
-    senhas_migracao = {
-        "Rafael": "raf123", "Ednaldo": "edn123", "Luiz Felipe": "luiz123",
-        "Carlos": "car123", "Cardoso": "card123", "Guilherme": "gui123", "Paulo": "pau123"
-    }
+    # Se o sistema precisar criar uma conta do zero ou inicializar uma nova turma, 
+    # ele adota uma senha padrão provisória "1234" já em formato de Hash.
+    # As senhas antigas em texto puro foram 100% eliminadas do código-fonte!
+    SENHA_PADRAO_PROVISORIA = gerar_hash("1234")
     
-    estrutura_limpa = {t: {"senha_hash": gerar_hash(senhas_migracao[t]), "transacoes": [], "historico": [], "pocos": [], "midias": []} for t in TURMAS}
+    estrutura_limpa = {t: {"senha_hash": SENHA_PADRAO_PROVISORIA, "transacoes": [], "historico": [], "pocos": [], "midias": []} for t in TURMAS}
     
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
@@ -70,9 +69,9 @@ def carregar_dados():
                 
                 for t in TURMAS:
                     if t not in dados:
-                        dados[t] = {"senha_hash": gerar_hash(senhas_migracao.get(t, "1234")), "transacoes": [], "historico": [], "pocos": [], "midias": []}
+                        dados[t] = {"senha_hash": SENHA_PADRAO_PROVISORIA, "transacoes": [], "historico": [], "pocos": [], "midias": []}
                     if "senha_hash" not in dados[t]:
-                        dados[t]["senha_hash"] = gerar_hash(senhas_migracao.get(t, "1234"))
+                        dados[t]["senha_hash"] = SENHA_PADRAO_PROVISORIA
                     if "pocos" not in dados[t]:
                         dados[t]["pocos"] = []
                     if "midias" not in dados[t]:
@@ -305,7 +304,7 @@ else:
         with aba_adm:
             st.subheader("⚙️ Controle Global e Segurança")
             
-            # --- NOVO GERENCIADOR DE SENHAS CRIPTOGRAFADAS ---
+            # --- GERENCIADOR DE SENHAS CRIPTOGRAFADAS ---
             st.markdown("### 🔑 Gerenciador de Senhas das Equipes")
             with st.form("form_mudar_senha"):
                 func_sel = st.selectbox("Selecione o Funcionário", TURMAS)
@@ -498,7 +497,7 @@ else:
                             f"Data de Registro: {p_baixar['data']}", f"Cliente: {p_baixar['cliente']}", f"Cidade: {p_baixar['cidade']}",
                             f"Metragem Perfurada: {p_baixar['metragem']} metros", f"Funcionarios na Obra: {p_baixar['funcionarios']}", f"Materiais Utilizados: {p_baixar['material']}"
                         ]
-                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
+                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", lines_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
                     else: 
                         st.caption("Nenhum poço encontrado.")
