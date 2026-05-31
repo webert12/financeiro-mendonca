@@ -1,225 +1,14 @@
 import streamlit as st
 import json
 import os
+import hashlib
 from datetime import datetime, timedelta, timezone
 import io
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 
-# --- CONFIGURAÇÃO VISUAL ESTILO "APK" PREMIUM ---
+# --- CONFIGURAÇÃO VISUAL ESTILO "APK" ---
 st.set_page_config(page_title="Mendonça Poços", page_icon="💧", layout="centered", initial_sidebar_state="collapsed")
-
-# Estilização profissional de alto padrão (UI/UX focada em Mobile-First e Desktop)
-st.markdown("""
-<style>
-    /* Importação da Fonte Premium Inter */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    /* Reset e Fundo Gradiente Fluido */
-    .stApp {
-        background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
-        font-family: 'Inter', sans-serif !important;
-        color: #f8fafc !important;
-        text-align: center !important;
-    }
-    
-    /* Centralização Absoluta de Títulos e Textos */
-    h1, h2, h3, h4, h5, h6, p {
-        font-family: 'Inter', sans-serif !important;
-        text-align: center !important;
-        width: 100% !important;
-    }
-    
-    /* Labels dos Formulários Centralizados e Alinhados */
-    label[data-testid="stWidgetLabel"] {
-        justify-content: center !important;
-        text-align: center !important;
-        display: flex !important;
-        width: 100% !important;
-        color: #e2e8f0 !important;
-        font-weight: 500 !important;
-        font-size: 0.95rem !important;
-        margin-bottom: 6px !important;
-    }
-
-    /* Centralizar Opções do Seletor de Rádio (Método de Pagamento) */
-    div[data-testid="stRadio"] > div {
-        justify-content: center !important;
-    }
-    
-    /* Customização Luxuosa dos Cards de Métricas */
-    div[data-testid="stMetricContainer"] {
-        background: #1e293b !important;
-        border: 1px solid #334155 !important;
-        border-radius: 14px !important;
-        padding: 18px 20px !important;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    div[data-testid="stMetricLabel"] {
-        color: #94a3b8 !important;
-        font-size: 0.85rem !important;
-        font-weight: 600 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.06em !important;
-    }
-    div[data-testid="stMetricValue"] {
-        color: #38bdf8 !important;
-        font-weight: 700 !important;
-        font-size: 1.75rem !important;
-    }
-
-    /* Estilização Geral de Botões Modernos */
-    div.stButton > button {
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-        color: #ffffff !important;
-        border: none !important;
-        border-radius: 10px !important;
-        padding: 12px 24px !important;
-        font-weight: 600 !important;
-        font-size: 0.95rem !important;
-        letter-spacing: 0.02em !important;
-        width: 100% !important;
-        box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25) !important;
-        transition: all 0.2s ease-in-out !important;
-        margin: 0 auto !important;
-        display: block !important;
-    }
-    div.stButton > button:hover {
-        background: linear-gradient(135deg, #0369a1 0%, #075985 100%) !important;
-        transform: translateY(-2px) !important;
-        box-shadow: 0 6px 15px rgba(2, 132, 199, 0.35) !important;
-    }
-    
-    /* Botões Secundários */
-    div.stButton > button[kind="secondary"] {
-        background: #334155 !important;
-        border: 1px solid #475569 !important;
-        color: #f1f5f9 !important;
-        box-shadow: none !important;
-    }
-    div.stButton > button[kind="secondary"]:hover {
-        background: #475569 !important;
-        transform: translateY(-1px) !important;
-    }
-    
-    /* Botões de Perigo/Reset */
-    div.stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important;
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25) !important;
-    }
-
-    /* Formulários e Blocos Containers */
-    div[data-testid="stForm"] {
-        background-color: #1e293b !important;
-        border: 1px solid #334155 !important;
-        border-radius: 16px !important;
-        padding: 24px !important;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3) !important;
-        text-align: center !important;
-    }
-    
-    /* Abas/Tabs Customizadas */
-    div[data-testid="stTabBar"] {
-        background-color: #111827 !important;
-        border-radius: 12px !important;
-        padding: 5px !important;
-        margin-bottom: 20px !important;
-        display: flex !important;
-        justify-content: center !important;
-    }
-    button[data-testid="stTabBarTab"] {
-        border-radius: 8px !important;
-        color: #94a3b8 !important;
-        font-weight: 500 !important;
-    }
-    button[data-testid="stTabBarTab"][aria-selected="true"] {
-        background-color: #0284c7 !important;
-        color: #ffffff !important;
-        font-weight: 600 !important;
-    }
-    
-    /* Inputs de Texto, Seletores e Áreas de Texto */
-    div[data-testid="stTextInput"] input, div[data-testid="stSelectbox"] div[data-baseweb="select"], div[data-testid="stTextArea"] textarea {
-        background-color: #0f172a !important;
-        border: 1px solid #334155 !important;
-        border-radius: 8px !important;
-        color: #f8fafc !important;
-        text-align: center !important;
-    }
-    
-    /* Inputs focados */
-    div[data-testid="stTextInput"] input:focus, div[data-testid="stSelectbox"] div[data-baseweb="select"]:focus {
-        border-color: #38bdf8 !important;
-    }
-    
-    /* --- CORREÇÃO E TRADUÇÃO DO SELETOR DE ARQUIVOS --- */
-    div[data-testid="stFileUploader"] {
-        display: flex !important;
-        flex-direction: column !important;
-        align-items: center !important;
-        justify-content: center !important;
-        width: 100% !important;
-    }
-    div[data-testid="stFileUploaderDropzone"] {
-        justify-content: center !important;
-        align-items: center !important;
-        text-align: center !important;
-        padding: 20px !important;
-        background-color: #0f172a !important;
-        border: 2px dashed #334155 !important;
-        border-radius: 12px !important;
-        width: 100% !important;
-    }
-    div[data-testid="stFileUploaderDropzone"] span, 
-    div[data-testid="stFileUploaderDropzone"] small {
-        display: none !important;
-    }
-    div[data-testid="stFileUploaderDropzone"] button {
-        font-size: 0 !important;
-        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%) !important;
-        color: #ffffff !important;
-        border: none !important;
-        padding: 10px 20px !important;
-        border-radius: 8px !important;
-        box-shadow: 0 4px 10px rgba(2, 132, 199, 0.2) !important;
-        cursor: pointer !important;
-        margin: 5px auto !important;
-        display: inline-block !important;
-    }
-    div[data-testid="stFileUploaderDropzone"] button::after {
-        content: "✨ Selecionar Arquivo" !important;
-        font-size: 0.9rem !important;
-        font-weight: 600 !important;
-        display: block !important;
-    }
-    
-        /* Badge Superior de Usuário Ativo */
-    .user-badge {
-        background: rgba(2, 132, 199, 0.15);
-        border: 1px solid rgba(2, 132, 199, 0.3);
-        padding: 8px 18px;
-        border-radius: 30px;
-        font-weight: 600;
-        color: #38bdf8;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        margin: 0 auto 15px auto !important;
-    }
-
-    /* 🔥 CORREÇÃO DE NITIDEZ MÁXIMA PARA A LOGO (Evita borrão em telas AMOLED/Retina) */
-    img {
-        image-rendering: -webkit-optimize-contrast !important; /* Chrome, Safari, Celulares */
-        image-rendering: crisp-edges !important;               /* Firefox */
-    }
-</style>
-""", unsafe_allow_html=True)
-
 
 # CONFIGURAÇÃO DO FUSO HORÁRIO DE BRASÍLIA (UTC-3)
 FUSO_BRASILIA = timezone(timedelta(hours=-3))
@@ -227,18 +16,12 @@ FUSO_BRASILIA = timezone(timedelta(hours=-3))
 DATA_FILE = "gastos_dados.json"
 LIMITE_DINHEIRO_SEMANAL = 500.00
 
-# --- USUÁRIOS E SENHAS ---
-CREDENCIAIS = {
-    "Rafael": "raf123",
-    "Ednaldo": "edn123",
-    "Luiz Felipe": "luiz123",
-    "Carlos": "car123",
-    "Cardoso": "card123",
-    "Guilherme": "gui123",
-    "Paulo": "pau123",
-    "ADM": "adm9988"
-}
-TURMAS = [nome for nome in CREDENCIAIS.keys() if nome != "ADM"]
+# Lista estática de equipes autorizadas no sistema
+TURMAS = ["Rafael", "Ednaldo", "Luiz Felipe", "Carlos", "Cardoso", "Guilherme", "Paulo"]
+
+# --- FUNÇÃO DE CRIPTOGRAFIA (HASHING SHA-256) ---
+def gerar_hash(senha):
+    return hashlib.sha256(senha.encode('utf-8')).hexdigest()
 
 # --- FUNÇÃO PARA GERAR PDF EM MEMÓRIA ---
 def exportar_para_pdf(titulo, linhas_conteudo):
@@ -246,14 +29,12 @@ def exportar_para_pdf(titulo, linhas_conteudo):
     c = canvas.Canvas(buffer, pagesize=letter)
     c.setTitle(titulo)
     
-    # Design do Cabeçalho do PDF
     c.setFont("Helvetica-Bold", 16)
     c.setFillColorRGB(0.0, 0.28, 0.67)
     c.drawString(50, 750, titulo.upper())
     c.setStrokeColorRGB(0.5, 0.5, 0.5)
     c.line(50, 740, 550, 740)
     
-    # Configuração do corpo de texto
     c.setFont("Helvetica", 11)
     c.setFillColorRGB(0, 0, 0)
     y = 710
@@ -270,18 +51,28 @@ def exportar_para_pdf(titulo, linhas_conteudo):
     buffer.seek(0)
     return buffer.getvalue()
 
-# --- FUNÇÕES DE ARMAZENAMENTO ISOLADO ---
+# --- FUNÇÕES DE ARMAZENAMENTO E MIGRAÇÃO SEGURA ---
 def carregar_dados():
-    estrutura_limpa = {t: {"transacoes": [], "historico": [], "pocos": [], "midias": []} for t in TURMAS}
+    # Senhas antigas usadas apenas para a primeira carga/migração automática de segurança
+    senhas_migracao = {
+        "Rafael": "raf123", "Ednaldo": "edn123", "Luiz Felipe": "luiz123",
+        "Carlos": "car123", "Cardoso": "card123", "Guilherme": "gui123", "Paulo": "pau123"
+    }
+    
+    estrutura_limpa = {t: {"senha_hash": gerar_hash(senhas_migracao[t]), "transacoes": [], "historico": [], "pocos": [], "midias": []} for t in TURMAS}
+    
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, "r") as f:
             try:
                 dados = json.load(f)
                 if "transacoes" in dados or isinstance(dados, list):
                     return estrutura_limpa
+                
                 for t in TURMAS:
                     if t not in dados:
-                        dados[t] = {"transacoes": [], "historico": [], "pocos": [], "midias": []}
+                        dados[t] = {"senha_hash": gerar_hash(senhas_migracao.get(t, "1234")), "transacoes": [], "historico": [], "pocos": [], "midias": []}
+                    if "senha_hash" not in dados[t]:
+                        dados[t]["senha_hash"] = gerar_hash(senhas_migracao.get(t, "1234"))
                     if "pocos" not in dados[t]:
                         dados[t]["pocos"] = []
                     if "midias" not in dados[t]:
@@ -304,8 +95,6 @@ if 'turma' not in st.session_state:
     st.session_state.turma = None
 if 'selecionou_usuario' not in st.session_state:
     st.session_state.selecionou_usuario = None
-
-# Chaves dinâmicas para resetar uploaders e mensagens
 if 'foto_key' not in st.session_state:
     st.session_state.foto_key = 0
 if 'video_key' not in st.session_state:
@@ -315,40 +104,42 @@ if 'msg_sucesso' not in st.session_state:
 
 # --- DESIGN DA LOGO DA EMPRESA ---
 def desenhar_logo():
-    st.markdown("<div style='text-align: center; margin-bottom: 20px;'>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
     if os.path.exists("logo.png"):
-        # Alterado para 160px para casar perfeitamente com a proporção limpa de 500x300px
-        st.image("logo.png", width=160)
+        st.image("logo.png", width=120)
     else:
-        st.markdown("<h1 style='font-size: 55px; margin: 0; filter: drop-shadow(0px 4px 10px rgba(56,189,248,0.3));'>💧</h1>", unsafe_allow_html=True)
-    st.markdown("<h2 style='color: #38bdf8; font-family: sans-serif; font-weight: 800; margin: 8px 0 2px 0; letter-spacing: 1px;'>MENDONÇA POÇOS</h2>", unsafe_allow_html=True)
-    st.markdown("<p style='color: #64748b; letter-spacing: 3px; font-size: 11px; font-weight: 600; margin: 0;'>GESTÃO CORPORATIVA</p>", unsafe_allow_html=True)
+        st.markdown("<h1 style='font-size: 50px; margin: 0;'>💧</h1>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #0047AB; font-family: sans-serif; margin: 5px 0;'>MENDONÇA POÇOS</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='color: gray; letter-spacing: 2px; font-size: 12px;'>======= GESTÃO CORPORATIVA =======</p>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 # --- TELA DE LOGIN / SELEÇÃO DE EQUIPE ---
 if st.session_state.perfil is None:
     desenhar_logo()
     if st.session_state.selecionou_usuario is None: 
-        st.markdown("<div style='text-align: center; margin-bottom: 15px; color: #94a3b8;'>Identifique-se para entrar no aplicativo:</div>", unsafe_allow_html=True) 
+        st.write("Identifique-se para entrar no aplicativo:") 
         if st.button("🔐 ACESSAR SISTEMA"): 
             st.session_state.selecionou_usuario = "FUNCIONARIO_FORM" 
             st.rerun() 
-        st.markdown("<br>", unsafe_allow_html=True)
+        st.divider() 
         if st.button("🔑 ACESSO ADMINISTRADOR (ADM)", type="secondary"): 
             st.session_state.selecionou_usuario = "ADM_SENHA" 
             st.rerun() 
     elif st.session_state.selecionou_usuario == "FUNCIONARIO_FORM": 
-        st.markdown("<h3 style='text-align:center; color:#f8fafc; margin-bottom:20px;'>Login de Colaborador</h3>", unsafe_allow_html=True) 
+        st.subheader("Login de Colaborador") 
         usuario_digitado = st.text_input("Digite seu Nome (Usuário)") 
         senha_digitada = st.text_input("Digite sua Senha", type="password") 
-        st.markdown("<br>", unsafe_allow_html=True)
         c_voltar, c_entrar = st.columns(2) 
-        if c_voltar.button("Voltar", type="secondary"): 
+        if c_voltar.button("Voltar"): 
             st.session_state.selecionou_usuario = None 
             st.rerun() 
         if c_entrar.button("Entrar"): 
-            if usuario_digitado in CREDENCIAIS and usuario_digitado != "ADM": 
-                if senha_digitada == CREDENCIAIS[usuario_digitado]: 
+            if usuario_digitado in TURMAS: 
+                # Validação segura comparando as duas hashes criptografadas
+                hash_digitada = gerar_hash(senha_digitada)
+                hash_salva = st.session_state.dados[usuario_digitado].get("senha_hash")
+                
+                if hash_digitada == hash_salva: 
                     st.session_state.perfil = "TURMA" 
                     st.session_state.turma = usuario_digitado 
                     st.session_state.selecionou_usuario = None 
@@ -358,43 +149,43 @@ if st.session_state.perfil is None:
             else: 
                 st.error("Usuário não encontrado.")
     elif st.session_state.selecionou_usuario == "ADM_SENHA": 
-        st.markdown("<div style='text-align:center; margin-bottom:15px;'>Digite a senha master para o perfil: <b>ADM</b></div>", unsafe_allow_html=True) 
+        st.write("Digite a senha master para o perfil: **ADM**") 
         senha_adm = st.text_input("Senha ADM", type="password") 
-        st.markdown("<br>", unsafe_allow_html=True)
         c_voltar, c_entrar = st.columns(2) 
-        if c_voltar.button("Voltar", type="secondary"): 
+        if c_voltar.button("Voltar"): 
             st.session_state.selecionou_usuario = None 
             st.rerun() 
         if c_entrar.button("Entrar como ADM"): 
-            if senha_adm == CREDENCIAIS["ADM"]: 
+            # Busca prioritariamente do Cofre de Segredos do Streamlit. Fallback temporário caso não esteja configurado.
+            senha_adm_segura = st.secrets.get("SENHA_ADM", "adm9988")
+            if senha_adm == senha_adm_segura: 
                 st.session_state.perfil = "ADM" 
                 st.session_state.selecionou_usuario = "ADM_MONITORAMENTO" 
                 st.rerun() 
             else: 
                 st.error("Senha de Administrador incorreta!")
     elif st.session_state.selecionou_usuario == "ADM_MONITORAMENTO": 
-        st.markdown("<h3 style='text-align:center; color:#38bdf8; margin-bottom:20px;'>Painel de Monitoramento (ADM)</h3>", unsafe_allow_html=True) 
+        st.subheader("Painel de Monitoramento (ADM)") 
         col1, col2 = st.columns(2) 
         for idx, t in enumerate(TURMAS): 
             c = col1 if idx % 2 == 0 else col2 
-            if c.button(f"👤 Ver {t}", key=f"btn_adm_ver_{t}", type="secondary"): 
+            if c.button(f"Ver {t}"): 
                 st.session_state.perfil = "TURMA" 
                 st.session_state.turma = t 
                 st.session_state.selecionou_usuario = None 
                 st.rerun() 
         st.divider() 
-        if st.button("📊 Painel Geral Consolidado"): 
+        if st.button("Ir para o Painel Geral Consolidado 📊"): 
             st.session_state.selecionou_usuario = None 
             st.rerun()
-
 # --- INTERFACE PRINCIPAL OPERACIONAL ---
 else:
-    c_status, c_sair = st.columns([2.5, 1.5])
+    c_status, c_sair = st.columns([3, 1])
     with c_status:
         identificacao = st.session_state.turma if st.session_state.perfil == "TURMA" else "Gestor Geral (ADM)"
-        st.markdown(f"<div class='user-badge'>🟢 Ativo: {identificacao}</div>", unsafe_allow_html=True)
+        st.markdown(f"🟢 Logado: {identificacao}")
     with c_sair:
-        if st.button("🚪 Sair do App", type="secondary"):
+        if st.button("Sair"):
             st.session_state.perfil = None
             st.session_state.turma = None
             st.session_state.selecionou_usuario = None
@@ -402,12 +193,11 @@ else:
     
     desenhar_logo()
     
-    # --- LOGICA DE MENUS SEPARADOS (ADM vs FUNCIONÁRIO) ---
     if st.session_state.perfil == "ADM":
         aba_relatorio, aba_adm = st.tabs(["📅 Relatório Mensal", "⚙️ Painel ADM"])
         
         with aba_relatorio:
-            st.markdown("<h4 style='color:#38bdf8; margin-top:10px;'>📅 Histórico Mensal de Equipes</h4>", unsafe_allow_html=True) 
+            st.subheader("📅 Histórico Mensal de Equipes") 
             target_turma = st.selectbox("Selecione o Colaborador para Auditar", TURMAS) 
             hist = st.session_state.dados[target_turma]["historico"] 
             pocos = st.session_state.dados[target_turma].get("pocos", []) 
@@ -415,7 +205,7 @@ else:
             
             meses = sorted(list(set(t.get("ano_mes", datetime.now(FUSO_BRASILIA).strftime("%Y-%m")) for t in hist + pocos + midias)), reverse=True) 
             if meses: 
-                mes_sel = st.selectbox("Escolha o mês de referência:", meses, key="mes_sel_adm") 
+                mes_sel = st.selectbox("Escolha o mês", meses, key="mes_sel_adm") 
                 sub_f, sub_p, sub_m = st.tabs(["💰 Custos", "🚰 Poços", "📷 Mídias"]) 
                 
                 with sub_f: 
@@ -424,11 +214,10 @@ else:
                     
                     if dias_disponiveis:
                         dias_pdf_sel = st.multiselect("📄 Escolha os dias para incluir no PDF:", dias_disponiveis, default=dias_disponiveis, key="dias_pdf_adm")
-                        
                         if dias_pdf_sel:
                             t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
                             linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
-                            pdf_financeiro = exportar_para_pdf(f"Custos - {target_turma} - Filtro", linhas_pdf_fin)
+                            pdf_financeiro = exportar_para_pdf(f"Custos - {target_turma} - Filtro customizado", linhas_pdf_fin)
                             st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf")
                         else:
                             st.warning("Selecione ao menos 1 dia para gerar o PDF.")
@@ -437,7 +226,7 @@ else:
                         dia_sel = st.selectbox("🔍 Escolha o dia para analisar custos na tela:", dias_disponiveis, key="dia_sel_adm_custos")
                         t_dia = [t for t in t_mes if t.get('data', '')[:5] == dia_sel]
                         for t in reversed(t_dia): 
-                            st.markdown(f"<div style='background:#0f172a; padding:10px; border-radius:8px; margin-bottom:8px; border-left:3px solid #38bdf8;'>💵 <b>{t['data']}</b> - {t['categoria']} - <span style='color:#38bdf8; font-weight:600;'>R${t['valor']:.2f}</span></div>", unsafe_allow_html=True)
+                            st.write(f"💵 {t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
                     else:
                         st.caption("Nenhum custo registrado.")
                 
@@ -448,26 +237,23 @@ else:
                         p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco) 
                         
                         st.markdown(f"""
-                        <div style='background-color: #0f172a; padding: 18px; border-radius: 12px; border-left: 5px solid #0284c7; margin-bottom: 15px; text-align: left !important;'>
-                            <h4 style='margin-top:0; color:#38bdf8; font-size:1.1rem; text-align: center !important;'>📋 Dados do Relatório</h4>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>📍 Cliente:</span> <b>{p_baixar['cliente']}</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>🏙️ Cidade:</span> <b>{p_baixar['cidade']}</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>📏 Metragem:</span> <b>{p_baixar['metragem']} metros</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>👥 Funcionários:</span> <b>{p_baixar['funcionarios']}</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>🧱 Materiais Usados:</span><br><i style='color:#f1f5f9;'>{p_baixar['material']}</i></p>
+                        <div style='background-color: #1e293b; padding: 15px; border-radius: 8px; border-left: 5px solid #0047AB; margin-bottom: 15px;'>
+                            <h4 style='margin-top:0;'>📋 Dados do Relatório</h4>
+                            <b>📍 Cliente:</b> {p_baixar['cliente']}<br>
+                            <b>🏙️ Cidade:</b> {p_baixar['cidade']}<br>
+                            <b>📏 Metragem Perfurada:</b> {p_baixar['metragem']} metros<br>
+                            <b>👥 Funcionários na Obra:</b> {p_baixar['funcionarios']}<br>
+                            <b>🧱 Materiais Utilizados:</b><br>{p_baixar['material']}
                         </div>
                         """, unsafe_allow_html=True)
                         
                         if st.checkbox("✏️ Corrigir/Editar este Relatório (ADM)", key="edit_mode_adm"):
                             with st.form("form_editar_poco_adm"):
-                                st.markdown("<h5 style='color:#38bdf8; margin-bottom:15px;'>Painel de Edição Limpo</h5>", unsafe_allow_html=True)
-                                ec1, ec2 = st.columns(2)
-                                novo_cl = ec1.text_input("Cliente", value=p_baixar['cliente'])
-                                novo_ci = ec2.text_input("Cidade", value=p_baixar['cidade'])
-                                novo_mt = ec1.text_input("Metragem Perfurada", value=p_baixar['metragem'])
-                                novo_fun = ec2.text_input("Equipe / Funcionários", value=p_baixar['funcionarios'])
-                                # CORREÇÃO: Mudado de rows=3 para height=100
-                                novo_mat = st.text_area("Materiais Utilizados", value=p_baixar['material'], height=100)
+                                novo_cl = st.text_input("Cliente", value=p_baixar['cliente'])
+                                novo_ci = st.text_input("Cidade", value=p_baixar['cidade'])
+                                novo_mt = st.text_input("Metragem", value=p_baixar['metragem'])
+                                novo_fun = st.text_input("Funcionários", value=p_baixar['funcionarios'])
+                                novo_mat = st.text_area("Material", value=p_baixar['material'])
                                 
                                 if st.form_submit_button("💾 Salvar Alterações"):
                                     idx_original = next(i for i, p in enumerate(st.session_state.dados[target_turma]["pocos"]) if id(p) == id(p_baixar))
@@ -475,18 +261,14 @@ else:
                                         "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun
                                     })
                                     salvar_dados(st.session_state.dados)
-                                    st.success("Relatório atualizado com sucesso!")
+                                    st.success("Relatório updated com sucesso!")
                                     st.rerun()
                         
                         linhas_pdf_poco = [
-                            f"Data de Registro: {p_baixar['data']}", 
-                            f"Cliente: {p_baixar['cliente']}", 
-                            f"Cidade: {p_baixar['cidade']}",
-                            f"Metragem Perfurada: {p_baixar['metragem']} metros", 
-                            f"Funcionarios na Obra: {p_baixar['funcionarios']}", 
-                            f"Materiais Utilizados: {p_baixar['material']}"
+                            f"Data de Registro: {p_baixar['data']}", f"Cliente: {p_baixar['cliente']}", f"Cidade: {p_baixar['cidade']}",
+                            f"Metragem Perfurada: {p_baixar['metragem']} metros", f"Funcionarios na Obra: {p_baixar['funcionarios']}", f"Materiais Utilizados: {p_baixar['material']}"
                         ]
-                        pdf_poco = exportar_para_pdf(f"Relatório de Poço - {p_baixar['cliente']}", linhas_pdf_poco)
+                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
                     else: 
                         st.caption("Nenhum poço encontrado.")
@@ -495,11 +277,11 @@ else:
                     m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
                     if m_mes:
                         pocos_disponiveis = sorted(list(set(m.get("poco", "Geral / Sem Poço Específico") for m in m_mes)))
-                        poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar mídias:", pocos_disponiveis, key="poco_sel_midia_adm")
+                        poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar fotos e vídeos:", pocos_disponiveis, key="poco_sel_midia_adm")
                         m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
                         
                         fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
-                        videos_filtradas = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                        videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
                         
                         st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
                         with st.expander("📸 FOTOS SALVAS"):
@@ -508,22 +290,35 @@ else:
                                     st.write(f"📅 {f['data']}")
                                     if os.path.exists(f['caminho']): st.image(f['caminho'], use_container_width=True)
                                     st.divider()
-                            else: st.caption("Nenhuma foto localizada.")
+                            else: st.caption("Nenhuma foto localizada para este poço.")
                         
                         with st.expander("🎥 VÍDEOS SALVOS"):
-                            if videos_filtradas:
-                                for v in reversed(videos_filtradas):
+                            if videos_filtrados:
+                                for v in reversed(videos_filtrados):
                                     st.write(f"📅 {v['data']}")
                                     if os.path.exists(v['caminho']): st.video(v['caminho'])
                                     st.divider()
-                            else: st.caption("Nenhum vídeo localizado.")
-                    else:
-                        st.caption("Nenhuma mídia registrada.")
+                            else: st.caption("Nenhum vídeo localizado para este poço.")
             else:
                 st.info("Nenhum registro encontrado para este colaborador.")
 
         with aba_adm:
-            st.markdown("<h4 style='color:#ef4444; margin-top:10px;'>⚙️ Controle Global do Sistema</h4>", unsafe_allow_html=True)
+            st.subheader("⚙️ Controle Global e Segurança")
+            
+            # --- NOVO GERENCIADOR DE SENHAS CRIPTOGRAFADAS ---
+            st.markdown("### 🔑 Gerenciador de Senhas das Equipes")
+            with st.form("form_mudar_senha"):
+                func_sel = st.selectbox("Selecione o Funcionário", TURMAS)
+                nova_senha = st.text_input("Definir Nova Senha", type="password")
+                if st.form_submit_button("🔒 ATUALIZAR SENHA"):
+                    if nova_senha.strip() != "":
+                        st.session_state.dados[func_sel]["senha_hash"] = gerar_hash(nova_senha)
+                        salvar_dados(st.session_state.dados)
+                        st.success(f"Senha do colaborador {func_sel} modificada e criptografada!")
+                    else:
+                        st.error("A senha não pode ser enviada em branco.")
+            
+            st.divider()
             if st.button("❌ RESETAR GASTOS DA SEMANA (TODAS AS EQUIPES)", type="primary"): 
                 for t in TURMAS: 
                     st.session_state.dados[t]["transacoes"] = [] 
@@ -532,8 +327,7 @@ else:
                 st.rerun()
 
     else:
-        # Interface Operacional Completa Exclusiva dos Funcionários
-        aba1, aba2 = st.tabs(["📝 Registrar Atividades", "📅 Relatório Mensal"])
+        aba1, aba2 = st.tabs(["📝 Registrar", "📅 Relatório Mensal"])
         
         with aba1: 
             t_ativa = st.session_state.turma 
@@ -542,55 +336,39 @@ else:
             total_gasto_dinheiro = sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Dinheiro')
             saldo_restante_dinheiro = LIMITE_DINHEIRO_SEMANAL - total_gasto_dinheiro
             
-            # Painel Superior de Métricas Estilizado
             c1, c2 = st.columns(2) 
             c1.metric("💵 Saldo Restante", f"R$ {saldo_restante_dinheiro:.2f}") 
             c2.metric("💳 Acumulado Cartão", f"R$ {sum(t['valor'] for t in trans_semana if t.get('metodo') == 'Cartão'):.2f}") 
             
-            st.markdown("<br>", unsafe_allow_html=True)
-            mostrar_painel = st.toggle("📝 Registrar Nova Despesa", value=False) 
+            mostrar_painel = st.toggle("📝 Registrar Despesas", value=False) 
             if mostrar_painel: 
                 with st.form("form_final_envio", clear_on_submit=True): 
-                    st.markdown("<h4 style='margin:0; color:#38bdf8;'>💰 Lançar Custo</h4>", unsafe_allow_html=True)
                     cat = st.selectbox("Categoria", ["Café da Manhã", "Almoço", "Outros"]) 
                     opcao_pgto = st.radio("Método de Pagamento", ["💵 Dinheiro", "💳 Cartão"], horizontal=True) 
-                    valor_input = st.text_input("Valor R$ (Ex: 25,50)") 
-                    if st.form_submit_button("SALVAR DESPESA"): 
-                        try:
-                            valor_final = float(valor_input.replace(",", ".")) 
-                            novo_trans = {"data": datetime.now(FUSO_BRASILIA).strftime("%d/%m %H:%M"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), "categoria": cat, "metodo": "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão", "valor": valor_final} 
-                            st.session_state.dados[t_ativa]["transacoes"].append(novo_trans) 
-                            st.session_state.dados[t_ativa]["historico"].append(novo_trans) 
-                            salvar_dados(st.session_state.dados)
-                            st.rerun() 
-                        except ValueError:
-                            st.error("Erro: Digite apenas números válidos no campo de Valor.")
+                    valor_input = st.text_input("Valor R$") 
+                    if st.form_submit_button("SALVAR"): 
+                        valor_final = float(valor_input.replace(",", ".")) 
+                        novo_trans = {"data": datetime.now(FUSO_BRASILIA).strftime("%d/%m %H:%M"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), "categoria": cat, "metodo": "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão", "valor": valor_final} 
+                        st.session_state.dados[t_ativa]["transacoes"].append(novo_trans) 
+                        st.session_state.dados[t_ativa]["historico"].append(novo_trans) 
+                        salvar_dados(st.session_state.dados); st.rerun() 
                         
-            mostrar_pocos = st.toggle("🚰 Relatar Poço Perfurado", value=False) 
+            mostrar_pocos = st.toggle("🚰 Poços Perfurados", value=False) 
             if mostrar_pocos: 
                 with st.form("form_pocos", clear_on_submit=True): 
-                    st.markdown("<h4 style='margin:0; color:#38bdf8;'>📋 Informações da Perfuração</h4>", unsafe_allow_html=True)
-                    cl = st.text_input("Nome do Cliente")
+                    cl = st.text_input("Cliente")
                     ci = st.text_input("Cidade")
-                    mt = st.text_input("Metragem Perfurada (Metros)")
-                    mat = st.text_area("Materiais Utilizados")
-                    fun = st.text_input("Funcionários na Obra")
+                    mt = st.text_input("Metragem")
+                    mat = st.text_area("Material")
+                    fun = st.text_input("Funcionários")
                     
-                    st.markdown("<br><h5 style='color:#38bdf8; margin:0;'>Anexar Mídias desta Obra 📷</h5>", unsafe_allow_html=True)
+                    st.markdown("---")
+                    st.write("**Anexar Mídias desta Obra 📷**")
                     
-                    foto_capturada = st.file_uploader(
-                        "Opção 1: Capturar Foto (Tamanho Máx: 200MB)", 
-                        type=["jpg", "jpeg", "png"], 
-                        key=f"foto_auto_{st.session_state.foto_key}"
-                    )
+                    foto_capturada = st.file_uploader("Opção 1: Tirar ou escolher Foto:", type=["jpg", "jpeg", "png"], key=f"foto_auto_{st.session_state.foto_key}")
+                    video_gravado = st.file_uploader("Opção 2: Filmar ou escolher Vídeo:", type=["mp4", "mov", "avi", "3gp"], key=f"video_auto_{st.session_state.video_key}")
                     
-                    video_gravado = st.file_uploader(
-                        "Opção 2: Gravar Vídeo (Tamanho Máx: 200MB)", 
-                        type=["mp4", "mov", "avi", "3gp"], 
-                        key=f"video_auto_{st.session_state.video_key}"
-                    )
-                    
-                    if st.form_submit_button("ENVIAR RELATÓRIO COMPLETO"): 
+                    if st.form_submit_button("SALVAR RELATÓRIO"): 
                         st.session_state.dados[t_ativa]["pocos"].append({
                             "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y"), 
                             "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), 
@@ -644,7 +422,7 @@ else:
                 """, unsafe_allow_html=True)
 
         with aba2: 
-            st.markdown("<h4 style='color:#38bdf8; margin-top:10px;'>📅 Meu Histórico Mensal</h4>", unsafe_allow_html=True) 
+            st.subheader("📅 Histórico Mensal") 
             t_ativa = st.session_state.turma 
             
             if st.session_state.msg_sucesso:
@@ -657,8 +435,8 @@ else:
             
             meses = sorted(list(set(t.get("ano_mes", datetime.now(FUSO_BRASILIA).strftime("%Y-%m")) for t in hist + pocos + midias)), reverse=True) 
             if meses: 
-                mes_sel = st.selectbox("Escolha o mês de referência:", meses, key="mes_sel_turma") 
-                sub_f, sub_p, sub_m = st.tabs(["💰 Meus Custos", "🚰 Poços Relatados", "📷 Minhas Mídias"]) 
+                mes_sel = st.selectbox("Escolha o mês", meses, key="mes_sel_turma") 
+                sub_f, sub_p, sub_m = st.tabs(["💰 Custos", "🚰 Poços", "📷 Mídias"]) 
                 
                 with sub_f: 
                     t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
@@ -666,7 +444,6 @@ else:
                     
                     if dias_disponiveis:
                         dias_pdf_sel = st.multiselect("📄 Selecione os dias para incluir no PDF:", dias_disponiveis, default=dias_disponiveis, key="dias_pdf_turma")
-                        
                         if dias_pdf_sel:
                             t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
                             linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
@@ -679,7 +456,7 @@ else:
                         dia_sel = st.selectbox("🔍 Escolha o dia para analisar custos na tela:", dias_disponiveis, key="dia_sel_turma_custos")
                         t_dia = [t for t in t_mes if t.get('data', '')[:5] == dia_sel]
                         for t in reversed(t_dia): 
-                            st.markdown(f"<div style='background:#0f172a; padding:10px; border-radius:8px; margin-bottom:8px; border-left:3px solid #0284c7;'>💵 <b>{t['data']}</b> - {t['categoria']} - <span style='color:#38bdf8; font-weight:600;'>R${t['valor']:.2f}</span></div>", unsafe_allow_html=True)
+                            st.write(f"💵 {t['data']} - {t['categoria']} - R${t['valor']:.2f}") 
                     else:
                         st.caption("Nenhum custo registrado.")
                 
@@ -690,26 +467,23 @@ else:
                         p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco) 
                         
                         st.markdown(f"""
-                        <div style='background-color: #0f172a; padding: 18px; border-radius: 12px; border-left: 5px solid #0284c7; margin-bottom: 15px; text-align: left !important;'>
-                            <h4 style='margin-top:0; color:#38bdf8; font-size:1.1rem; text-align: center !important;'>📋 Dados Atuais do Relatório</h4>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>📍 Cliente:</span> <b>{p_baixar['cliente']}</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>🏙️ Cidade:</span> <b>{p_baixar['cidade']}</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>📏 Metragem Perfurada:</span> <b>{p_baixar['metragem']} metros</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>👥 Funcionários:</span> <b>{p_baixar['funcionarios']}</b></p>
-                            <p style='text-align: left !important; margin: 4px 0;'><span style='color:#94a3b8;'>🧱 Materiais Usados:</span><br><i style='color:#f1f5f9;'>{p_baixar['material']}</i></p>
+                        <div style='background-color: #1e293b; padding: 15px; border-radius: 8px; border-left: 5px solid #0047AB; margin-bottom: 15px;'>
+                            <h4 style='margin-top:0;'>📋 Dados Atuais do Relatório</h4>
+                            <b>📍 Cliente:</b> {p_baixar['cliente']}<br>
+                            <b>🏙️ Cidade:</b> {p_baixar['cidade']}<br>
+                            <b>📏 Metragem Perfurada:</b> {p_baixar['metragem']} metros<br>
+                            <b>👥 Funcionários na Obra:</b> {p_baixar['funcionarios']}<br>
+                            <b>🧱 Materiais Utilizados:</b><br>{p_baixar['material']}
                         </div>
                         """, unsafe_allow_html=True)
                         
                         if st.checkbox("✏️ Editar este Relatório", key="edit_mode_turma"):
                             with st.form("form_editar_poco_turma"):
-                                st.markdown("<h5 style='color:#38bdf8; margin-bottom:15px;'>Painel de Edição Limpo</h5>", unsafe_allow_html=True)
-                                ec1, ec2 = st.columns(2)
-                                novo_cl = ec1.text_input("Cliente", value=p_baixar['cliente'])
-                                novo_ci = ec2.text_input("Cidade", value=p_baixar['cidade'])
-                                novo_mt = ec1.text_input("Metragem Perfurada", value=p_baixar['metragem'])
-                                novo_fun = ec2.text_input("Equipe / Funcionários", value=p_baixar['funcionarios'])
-                                # CORREÇÃO: Mudado de rows=3 para height=100
-                                novo_mat = st.text_area("Materiais Utilizados", value=p_baixar['material'], height=100)
+                                novo_cl = st.text_input("Cliente", value=p_baixar['cliente'])
+                                novo_ci = st.text_input("Cidade", value=p_baixar['cidade'])
+                                novo_mt = st.text_input("Metragem", value=p_baixar['metragem'])
+                                novo_fun = st.text_input("Funcionários", value=p_baixar['funcionarios'])
+                                novo_mat = st.text_area("Material", value=p_baixar['material'])
                                 
                                 if st.form_submit_button("💾 Salvar Alterações"):
                                     idx_original = next(i for i, p in enumerate(st.session_state.dados[t_ativa]["pocos"]) if id(p) == id(p_baixar))
@@ -721,12 +495,8 @@ else:
                                     st.rerun()
                         
                         linhas_pdf_poco = [
-                            f"Data de Registro: {p_baixar['data']}", 
-                            f"Cliente: {p_baixar['cliente']}", 
-                            f"Cidade: {p_baixar['cidade']}",
-                            f"Metragem Perfurada: {p_baixar['metragem']} metros", 
-                            f"Funcionarios na Obra: {p_baixar['funcionarios']}", 
-                            f"Materiais Utilizados: {p_baixar['material']}"
+                            f"Data de Registro: {p_baixar['data']}", f"Cliente: {p_baixar['cliente']}", f"Cidade: {p_baixar['cidade']}",
+                            f"Metragem Perfurada: {p_baixar['metragem']} metros", f"Funcionarios na Obra: {p_baixar['funcionarios']}", f"Materiais Utilizados: {p_baixar['material']}"
                         ]
                         pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
@@ -759,5 +529,3 @@ else:
                                     st.divider()
                             else: st.caption("Nenhum vídeo localizado para este poço.")
                     else: st.caption("Nenhuma mídia registrada para este colaborador neste mês.")
-            else:
-                st.info("Nenhum registro encontrado.")
