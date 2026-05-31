@@ -23,7 +23,7 @@ st.markdown("""
         text-align: center !important;
     }
     
-    /* Centralização Absoluta de Títulos e Textos (CORRIGIDO: Removido o 'span' global que quebrava o checkbox) */
+    /* Centralização Absoluta de Títulos e Textos */
     h1, h2, h3, h4, h5, h6, p {
         font-family: 'Inter', sans-serif !important;
         text-align: center !important;
@@ -458,7 +458,8 @@ else:
                                 novo_ci = ec2.text_input("Cidade", value=p_baixar['cidade'])
                                 novo_mt = ec1.text_input("Metragem Perfurada", value=p_baixar['metragem'])
                                 novo_fun = ec2.text_input("Equipe / Funcionários", value=p_baixar['funcionarios'])
-                                novo_mat = st.text_area("Materiais Utilizados", value=p_baixar['material'], rows=3)
+                                # CORREÇÃO: Mudado de rows=3 para height=100
+                                novo_mat = st.text_area("Materiais Utilizados", value=p_baixar['material'], height=100)
                                 
                                 if st.form_submit_button("💾 Salvar Alterações"):
                                     idx_original = next(i for i, p in enumerate(st.session_state.dados[target_turma]["pocos"]) if id(p) == id(p_baixar))
@@ -466,7 +467,7 @@ else:
                                         "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun
                                     })
                                     salvar_dados(st.session_state.dados)
-                                    st.success("Relatório updated com sucesso!")
+                                    st.success("Relatório atualizado com sucesso!")
                                     st.rerun()
                         
                         linhas_pdf_poco = [
@@ -699,7 +700,8 @@ else:
                                 novo_ci = ec2.text_input("Cidade", value=p_baixar['cidade'])
                                 novo_mt = ec1.text_input("Metragem Perfurada", value=p_baixar['metragem'])
                                 novo_fun = ec2.text_input("Equipe / Funcionários", value=p_baixar['funcionarios'])
-                                novo_mat = st.text_area("Materiais Utilizados", value=p_baixar['material'], rows=3)
+                                # CORREÇÃO: Mudado de rows=3 para height=100
+                                novo_mat = st.text_area("Materiais Utilizados", value=p_baixar['material'], height=100)
                                 
                                 if st.form_submit_button("💾 Salvar Alterações"):
                                     idx_original = next(i for i, p in enumerate(st.session_state.dados[t_ativa]["pocos"]) if id(p) == id(p_baixar))
