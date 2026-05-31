@@ -53,9 +53,6 @@ def exportar_para_pdf(titulo, linhas_conteudo):
 
 # --- FUNÇÕES DE ARMAZENAMENTO E MIGRAÇÃO SEGURA ---
 def carregar_dados():
-    # Se o sistema precisar criar uma conta do zero ou inicializar uma nova turma, 
-    # ele adota uma senha padrão provisória "1234" já em formato de Hash.
-    # As senhas antigas em texto puro foram 100% eliminadas do código-fonte!
     SENHA_PADRAO_PROVISORIA = gerar_hash("1234")
     
     estrutura_limpa = {t: {"senha_hash": SENHA_PADRAO_PROVISORIA, "transacoes": [], "historico": [], "pocos": [], "midias": []} for t in TURMAS}
@@ -134,7 +131,6 @@ if st.session_state.perfil is None:
             st.rerun() 
         if c_entrar.button("Entrar"): 
             if usuario_digitado in TURMAS: 
-                # Validação segura comparando as duas hashes criptografadas
                 hash_digitada = gerar_hash(senha_digitada)
                 hash_salva = st.session_state.dados[usuario_digitado].get("senha_hash")
                 
@@ -155,7 +151,6 @@ if st.session_state.perfil is None:
             st.session_state.selecionou_usuario = None 
             st.rerun() 
         if c_entrar.button("Entrar como ADM"): 
-            # Busca prioritariamente do Cofre de Segredos do Streamlit. Fallback temporário caso não esteja configurado.
             senha_adm_segura = st.secrets.get("SENHA_ADM", "adm9988")
             if senha_adm == senha_adm_segura: 
                 st.session_state.perfil = "ADM" 
@@ -177,6 +172,7 @@ if st.session_state.perfil is None:
         if st.button("Ir para o Painel Geral Consolidado 📊"): 
             st.session_state.selecionou_usuario = None 
             st.rerun()
+
 # --- INTERFACE PRINCIPAL OPERACIONAL ---
 else:
     c_status, c_sair = st.columns([3, 1])
@@ -260,7 +256,7 @@ else:
                                         "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun
                                     })
                                     salvar_dados(st.session_state.dados)
-                                    st.success("Relatório updated com sucesso!")
+                                    st.success("Relatório atualizado com sucesso!")
                                     st.rerun()
                         
                         linhas_pdf_poco = [
@@ -341,16 +337,42 @@ else:
             
             mostrar_painel = st.toggle("📝 Registrar Despesas", value=False) 
             if mostrar_painel: 
+                # Lógica para Categoria Dinâmica fora do form para atualizar a UI
+                cat_principal = st.selectbox("Categoria", ["Café da Manhã", "Almoço", "Cafe da tarde", "Jantar", "Outros"]) 
+                categoria_final = cat_principal
+                
+                if cat_principal == "Outros":
+                    sub_cat = st.selectbox("Detalhe do Gasto", ["Pedágio", "Oficinas", "Lojas", "Outro (Especificar)"])
+                    if sub_cat == "Lojas":
+                        nome_loja = st.text_input("Qual o nome da loja?")
+                        categoria_final = f"Loja: {nome_loja}"
+                    elif sub_cat == "Outro (Especificar)":
+                        desc_gasto = st.text_input("O que foi gasto?")
+                        categoria_final = f"Outro: {desc_gasto}"
+                    else:
+                        categoria_final = sub_cat
+
                 with st.form("form_final_envio", clear_on_submit=True): 
-                    cat = st.selectbox("Categoria", ["Café da Manhã", "Almoço", "Outros"]) 
                     opcao_pgto = st.radio("Método de Pagamento", ["💵 Dinheiro", "💳 Cartão"], horizontal=True) 
                     valor_input = st.text_input("Valor R$") 
+                    
                     if st.form_submit_button("SALVAR"): 
-                        valor_final = float(valor_input.replace(",", ".")) 
-                        novo_trans = {"data": datetime.now(FUSO_BRASILIA).strftime("%d/%m %H:%M"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), "categoria": cat, "metodo": "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão", "valor": valor_final} 
-                        st.session_state.dados[t_ativa]["transacoes"].append(novo_trans) 
-                        st.session_state.dados[t_ativa]["historico"].append(novo_trans) 
-                        salvar_dados(st.session_state.dados); st.rerun() 
+                        if not valor_input:
+                            st.error("Informe o valor!")
+                        else:
+                            valor_final = float(valor_input.replace(",", ".")) 
+                            novo_trans = {
+                                "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m %H:%M"), 
+                                "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), 
+                                "categoria": categoria_final, 
+                                "metodo": "Dinheiro" if "Dinheiro" in opcao_pgto else "Cartão", 
+                                "valor": valor_final
+                            } 
+                            st.session_state.dados[t_ativa]["transacoes"].append(novo_trans) 
+                            st.session_state.dados[t_ativa]["historico"].append(novo_trans) 
+                            salvar_dados(st.session_state.dados)
+                            st.success("Despesa salva!")
+                            st.rerun() 
                         
             mostrar_pocos = st.toggle("🚰 Poços Perfurados", value=False) 
             if mostrar_pocos: 
@@ -497,7 +519,7 @@ else:
                             f"Data de Registro: {p_baixar['data']}", f"Cliente: {p_baixar['cliente']}", f"Cidade: {p_baixar['cidade']}",
                             f"Metragem Perfurada: {p_baixar['metragem']} metros", f"Funcionarios na Obra: {p_baixar['funcionarios']}", f"Materiais Utilizados: {p_baixar['material']}"
                         ]
-                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", lines_pdf_poco)
+                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
                     else: 
                         st.caption("Nenhum poço encontrado.")
