@@ -23,8 +23,8 @@ st.markdown("""
         text-align: center !important;
     }
     
-    /* Centralização Absoluta de Títulos e Textos */
-    h1, h2, h3, h4, h5, h6, p, span {
+    /* Centralização Absoluta de Títulos e Textos (CORRIGIDO: Removido o 'span' global que quebrava o checkbox) */
+    h1, h2, h3, h4, h5, h6, p {
         font-family: 'Inter', sans-serif !important;
         text-align: center !important;
         width: 100% !important;
@@ -466,7 +466,7 @@ else:
                                         "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun
                                     })
                                     salvar_dados(st.session_state.dados)
-                                    st.success("Relatório atualizado com sucesso!")
+                                    st.success("Relatório updated com sucesso!")
                                     st.rerun()
                         
                         linhas_pdf_poco = [
