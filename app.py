@@ -445,9 +445,9 @@ else:
                     st.markdown("---")
                     st.write("**📷 Câmera (Anexar Mídias desta Obra)**")
                     
-                    # Rótulos alterados para "Câmera" conforme solicitado
-                    foto_capturada = st.file_uploader("📷 1: Câmera (Foto):", type=["jpg", "jpeg", "png"], key=f"foto_auto_{st.session_state.foto_key}")
-                    video_gravado = st.file_uploader("🎥 2: Câmera (Vídeo):", type=["mp4", "mov", "avi", "3gp"], key=f"video_auto_{st.session_state.video_key}")
+                    # Correção: Chaves dinâmicas para limpar o uploader
+                    foto_capturada = st.file_uploader("📷 1: Câmera (Foto):", type=["jpg", "jpeg", "png"], key=f"foto_{st.session_state.foto_key}")
+                    video_gravado = st.file_uploader("🎥 2: Câmera (Vídeo):", type=["mp4", "mov", "avi", "3gp"], key=f"video_{st.session_state.video_key}")
                     
                     if st.form_submit_button("SALVAR RELATÓRIO"): 
                         st.session_state.dados[t_ativa]["pocos"].append({
@@ -458,27 +458,28 @@ else:
                         
                         nome_poco_vinculo = f"{cl} ({ci})" if (cl or ci) else "Geral / Sem Poço Específico"
                         
+                        # Correção: Uso de .read() e incremento de chave para limpar o estado
                         if foto_capturada is not None:
-                            bytes_foto = foto_capturada.getvalue()
+                            bytes_foto = foto_capturada.read()
                             encoded_foto = base64.b64encode(bytes_foto).decode('utf-8')
-                            data_uri_foto = f"data:image/jpeg;base64,{encoded_foto}"
-                            
                             st.session_state.dados[t_ativa]["midias"].append({
                                 "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), 
                                 "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
-                                "caminho": data_uri_foto, "tipo": "image/jpeg", "poco": nome_poco_vinculo
+                                "caminho": f"data:image/jpeg;base64,{encoded_foto}", 
+                                "tipo": "image/jpeg", 
+                                "poco": nome_poco_vinculo
                             })
                             st.session_state.foto_key += 1
 
                         if video_gravado is not None:
-                            bytes_video = video_gravado.getvalue()
+                            bytes_video = video_gravado.read()
                             encoded_video = base64.b64encode(bytes_video).decode('utf-8')
-                            data_uri_video = f"data:{video_gravado.type};base64,{encoded_video}"
-                            
                             st.session_state.dados[t_ativa]["midias"].append({
                                 "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), 
                                 "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
-                                "caminho": data_uri_video, "tipo": video_gravado.type, "poco": nome_poco_vinculo
+                                "caminho": f"data:{video_gravado.type};base64,{encoded_video}", 
+                                "tipo": video_gravado.type, 
+                                "poco": nome_poco_vinculo
                             })
                             st.session_state.video_key += 1
 
@@ -586,28 +587,4 @@ else:
                 with sub_m:
                     m_mes = [m for m in midias if m.get("ano_mes") == mes_sel]
                     if m_mes:
-                        pocos_disponiveis = sorted(list(set(m.get("poco", "Geral / Sem Poço Específico") for m in m_mes)))
-                        poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar fotos e vídeos:", pocos_disponiveis, key="poco_sel_midia_turma")
-                        m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
-                        
-                        fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower()]
-                        videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower()]
-                        
-                        st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
-                        with st.expander("📸 FOTOS SALVAS"):
-                            if fotos_filtradas:
-                                for f in reversed(fotos_filtradas):
-                                    st.write(f"📅 {f['data']}")
-                                    st.image(f['caminho'], use_container_width=True)
-                                    st.divider()
-                            else: st.caption("Nenhuma foto localizada para este poço.")
-                        with st.expander("🎥 VÍDEOS SALVOS"):
-                            if videos_filtrados:
-                                for v in reversed(videos_filtrados):
-                                    st.write(f"📅 {v['data']}")
-                                    st.video(f['caminho'] if 'caminho' in v else v['caminho']) # Pequeno ajuste de segurança
-                                    # Corrigi a linha abaixo para apontar para 'v' e não 'f'
-                                    st.video(v['caminho'])
-                                    st.divider()
-                            else: st.caption("Nenhum vídeo localizado para este poço.")
-                    else: st.caption("Nenhuma mídia registrada para este colaborador neste mês.")
+                        pocos_disponiveis = sorted(list(set(m.get("poco
