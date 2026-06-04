@@ -4,8 +4,17 @@ import os
 import hashlib
 from datetime import datetime, timedelta, timezone
 import io
+import base64
+import psycopg2
+import psycopg2.extras
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+
+# =========================================================================
+# CONFIGURAÇÕES DO SISTEMA (SENHA ADM)
+# =========================================================================
+SENHA_ADM_SISTEMA = "adm9988"
+# =========================================================================
 
 # --- CONFIGURAÇÃO VISUAL ESTILO "APK" ---
 st.set_page_config(page_title="Mendonça Poços", page_icon="💧", layout="centered", initial_sidebar_state="collapsed")
@@ -13,11 +22,24 @@ st.set_page_config(page_title="Mendonça Poços", page_icon="💧", layout="cent
 # CONFIGURAÇÃO DO FUSO HORÁRIO DE BRASÍLIA (UTC-3)
 FUSO_BRASILIA = timezone(timedelta(hours=-3))
 
-DATA_FILE = "gastos_dados.json"
 LIMITE_DINHEIRO_SEMANAL = 500.00
 
 # Lista estática de equipes autorizadas no sistema
 TURMAS = ["Rafael", "Ednaldo", "Luiz Felipe", "Carlos", "Cardoso", "Guilherme", "Paulo"]
+
+# --- FUNÇÃO DE CONEXÃO DIRETA COM O STREAMLIT SECRETS ---
+def obter_conexao():
+    # O código vai ler a URL que você colou no painel do Streamlit
+    return psycopg2.connect(st.secrets["URL_BANCO"])
+
+# Trata dados do banco garantindo que venham como listas/dicionários legíveis
+def processar_json_db(campo):
+    if isinstance(campo, str):
+        try:
+            return json.loads(campo)
+        except:
+            return []
+    return campo if campo is not None else []
 
 # --- FUNÇÃO DE CRIPTOGRAFIA (HASHING SHA-256) ---
 def gerar_hash(senha):
@@ -51,36 +73,77 @@ def exportar_para_pdf(titulo, linhas_conteudo):
     buffer.seek(0)
     return buffer.getvalue()
 
-# --- FUNÇÕES DE ARMAZENAMENTO E MIGRAÇÃO SEGURA ---
+# --- FUNÇÕES DE ARMAZENAMENTO VIA POSTGRESQL ---
 def carregar_dados():
     SENHA_PADRAO_PROVISORIA = gerar_hash("1234")
+    dados_app = {}
     
-    estrutura_limpa = {t: {"senha_hash": SENHA_PADRAO_PROVISORIA, "transacoes": [], "historico": [], "pocos": [], "midias": []} for t in TURMAS}
-    
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r") as f:
-            try:
-                dados = json.load(f)
-                if "transacoes" in dados or isinstance(dados, list):
-                    return estrutura_limpa
-                
-                for t in TURMAS:
-                    if t not in dados:
-                        dados[t] = {"senha_hash": SENHA_PADRAO_PROVISORIA, "transacoes": [], "historico": [], "pocos": [], "midias": []}
-                    if "senha_hash" not in dados[t]:
-                        dados[t]["senha_hash"] = SENHA_PADRAO_PROVISORIA
-                    if "pocos" not in dados[t]:
-                        dados[t]["pocos"] = []
-                    if "midias" not in dados[t]:
-                        dados[t]["midias"] = []
-                return dados
-            except:
-                return estrutura_limpa
-    return estrutura_limpa
+    try:
+        conn = obter_conexao()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT nome, senha_hash, transacoes, historico, pocos, midias FROM equipes;")
+        dados_db = cur.fetchall()
+        
+        db_turmas = {row["nome"]: row for row in dados_db}
+        
+        for t in TURMAS:
+            if t in db_turmas:
+                row = db_turmas[t]
+                dados_app[t] = {
+                    "senha_hash": row.get("senha_hash") or SENHA_PADRAO_PROVISORIA,
+                    "transacoes": processar_json_db(row.get("transacoes")),
+                    "historico": processar_json_db(row.get("historico")),
+                    "pocos": processar_json_db(row.get("pocos")),
+                    "midias": processar_json_db(row.get("midias"))
+                }
+            else:
+                cur.execute("""
+                    INSERT INTO equipes (nome, senha_hash, transacoes, historico, pocos, midias)
+                    VALUES (%s, %s, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb, '[]'::jsonb);
+                """, (t, SENHA_PADRAO_PROVISORIA))
+                dados_app[t] = {
+                    "senha_hash": SENHA_PADRAO_PROVISORIA,
+                    "transacoes": [],
+                    "historico": [],
+                    "pocos": [],
+                    "midias": []
+                }
+        conn.commit()
+        cur.close()
+        conn.close()
+        return dados_app
+    except Exception as e:
+        st.error(f"Erro ao carregar dados do Banco de Dados: {e}")
+        return {t: {"senha_hash": SENHA_PADRAO_PROVISORIA, "transacoes": [], "historico": [], "pocos": [], "midias": []} for t in TURMAS}
 
 def salvar_dados(dados):
-    with open(DATA_FILE, "w") as f:
-        json.dump(dados, f, indent=4)
+    try:
+        conn = obter_conexao()
+        cur = conn.cursor()
+        for t in TURMAS:
+            if t in dados:
+                cur.execute("""
+                    INSERT INTO equipes (nome, senha_hash, transacoes, historico, pocos, midias)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (nome) DO UPDATE SET
+                        senha_hash = EXCLUDED.senha_hash,
+                        transacoes = EXCLUDED.transacoes,
+                        historico = EXCLUDED.historico,
+                        pocos = EXCLUDED.pocos,
+                        midias = EXCLUDED.midias;
+                """, (
+                    t,
+                    dados[t]["senha_hash"],
+                    json.dumps(dados[t]["transacoes"]),
+                    json.dumps(dados[t]["historico"]),
+                    json.dumps(dados[t]["pocos"]),
+                    json.dumps(dados[t]["midias"])
+                ))
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        st.error(f"Erro ao sincronizar dados com o Banco de Dados: {e}")
 
 # Inicialização do Estado da Sessão
 if 'dados' not in st.session_state:
@@ -151,8 +214,7 @@ if st.session_state.perfil is None:
             st.session_state.selecionou_usuario = None 
             st.rerun() 
         if c_entrar.button("Entrar como ADM"): 
-            senha_adm_segura = st.secrets.get("SENHA_ADM", "adm9988")
-            if senha_adm == senha_adm_segura: 
+            if senha_adm == SENHA_ADM_SISTEMA: 
                 st.session_state.perfil = "ADM" 
                 st.session_state.selecionou_usuario = "ADM_MONITORAMENTO" 
                 st.rerun() 
@@ -212,7 +274,7 @@ else:
                         if dias_pdf_sel:
                             t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
                             linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
-                            pdf_financeiro = exportar_para_pdf(f"Custos - {target_turma} - Filtro customizado", linhas_pdf_fin)
+                            pdf_financeiro = exportar_para_pdf(f"Custos - {target_turma} - Filtro customizado", lines_pdf_fin)
                             st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf")
                         else:
                             st.warning("Selecione ao menos 1 dia para gerar o PDF.")
@@ -256,7 +318,7 @@ else:
                                         "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun
                                     })
                                     salvar_dados(st.session_state.dados)
-                                    st.success("Relatório atualizado com sucesso!")
+                                    st.success("Relatório updated com sucesso!")
                                     st.rerun()
                         
                         linhas_pdf_poco = [
@@ -275,15 +337,15 @@ else:
                         poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar fotos e vídeos:", pocos_disponiveis, key="poco_sel_midia_adm")
                         m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
                         
-                        fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
-                        videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                        fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower()]
+                        videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower()]
                         
                         st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
                         with st.expander("📸 FOTOS SALVAS"):
                             if fotos_filtradas:
                                 for f in reversed(fotos_filtradas):
                                     st.write(f"📅 {f['data']}")
-                                    if os.path.exists(f['caminho']): st.image(f['caminho'], use_container_width=True)
+                                    st.image(f['caminho'], use_container_width=True)
                                     st.divider()
                             else: st.caption("Nenhuma foto localizada para este poço.")
                         
@@ -291,7 +353,7 @@ else:
                             if videos_filtrados:
                                 for v in reversed(videos_filtrados):
                                     st.write(f"📅 {v['data']}")
-                                    if os.path.exists(v['caminho']): st.video(v['caminho'])
+                                    st.video(v['caminho'])
                                     st.divider()
                             else: st.caption("Nenhum vídeo localizado para este poço.")
             else:
@@ -299,8 +361,6 @@ else:
 
         with aba_adm:
             st.subheader("⚙️ Controle Global e Segurança")
-            
-            # --- GERENCIADOR DE SENHAS CRIPTOGRAFADAS ---
             st.markdown("### 🔑 Gerenciador de Senhas das Equipes")
             with st.form("form_mudar_senha"):
                 func_sel = st.selectbox("Selecione o Funcionário", TURMAS)
@@ -337,7 +397,6 @@ else:
             
             mostrar_painel = st.toggle("📝 Registrar Despesas", value=False) 
             if mostrar_painel: 
-                # Lógica para Categoria Dinâmica fora do form para atualizar a UI
                 cat_principal = st.selectbox("Categoria", ["Café da Manhã", "Almoço", "Cafe da tarde", "Jantar", "Outros"]) 
                 categoria_final = cat_principal
                 
@@ -399,30 +458,29 @@ else:
                         nome_poco_vinculo = f"{cl} ({ci})" if (cl or ci) else "Geral / Sem Poço Específico"
                         
                         if foto_capturada is not None:
-                            if not os.path.exists("saved_media"): os.makedirs("saved_media")
-                            nome_arquivo_foto = f"saved_media/{t_ativa}_{datetime.now(FUSO_BRASILIA).strftime('%Y%m%d_%H%M%S')}_camera.jpg"
-                            with open(nome_arquivo_foto, "wb") as f: 
-                                f.write(foto_capturada.getbuffer())
+                            bytes_foto = foto_capturada.getvalue()
+                            encoded_foto = base64.b64encode(bytes_foto).decode('utf-8')
+                            data_uri_foto = f"data:image/jpeg;base64,{encoded_foto}"
+                            
                             st.session_state.dados[t_ativa]["midias"].append({
                                 "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), 
                                 "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
-                                "caminho": nome_arquivo_foto, "tipo": "image/jpeg", "poco": nome_poco_vinculo
+                                "caminho": data_uri_foto, "tipo": "image/jpeg", "poco": nome_poco_vinculo
                             })
                             st.session_state.foto_key += 1
 
                         if video_gravado is not None:
-                            if not os.path.exists("saved_media"): os.makedirs("saved_media")
-                            extensao = video_gravado.name.split(".")[-1]
-                            nome_arquivo_video = f"saved_media/{t_ativa}_{datetime.now(FUSO_BRASILIA).strftime('%Y%m%d_%H%M%S')}.{extensao}"
-                            with open(nome_arquivo_video, "wb") as f: 
-                                f.write(video_gravado.getbuffer())
+                            bytes_video = video_gravado.getvalue()
+                            encoded_video = base64.b64encode(bytes_video).decode('utf-8')
+                            data_uri_video = f"data:{video_gravado.type};base64,{encoded_video}"
+                            
                             st.session_state.dados[t_ativa]["midias"].append({
                                 "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), 
                                 "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
-                                "caminho": nome_arquivo_video, "tipo": video_gravado.type, "poco": nome_poco_vinculo
+                                "caminho": data_uri_video, "tipo": video_gravado.type, "poco": nome_poco_vinculo
                             })
                             st.session_state.video_key += 1
-                        
+
                         salvar_dados(st.session_state.dados)
                         st.session_state.msg_sucesso = "✅ Relatório e mídias salvos com sucesso!"
                         st.rerun()
@@ -531,22 +589,22 @@ else:
                         poco_selecionado = st.selectbox("🔍 Escolha o Poço para visualizar fotos e vídeos:", pocos_disponiveis, key="poco_sel_midia_turma")
                         m_filtrado = [m for m in m_mes if m.get("poco", "Geral / Sem Poço Específico") == poco_selecionado]
                         
-                        fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower() and not m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
-                        videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower() or m['caminho'].endswith(('.mp4', '.mov', '.avi', '.3gp'))]
+                        fotos_filtradas = [m for m in m_filtrado if "video" not in m.get("tipo", "").lower()]
+                        videos_filtrados = [m for m in m_filtrado if "video" in m.get("tipo", "").lower()]
                         
                         st.markdown(f"### 📁 Arquivos de: *{poco_selecionado}*")
                         with st.expander("📸 FOTOS SALVAS"):
                             if fotos_filtradas:
                                 for f in reversed(fotos_filtradas):
                                     st.write(f"📅 {f['data']}")
-                                    if os.path.exists(f['caminho']): st.image(f['caminho'], use_container_width=True)
+                                    st.image(f['caminho'], use_container_width=True)
                                     st.divider()
                             else: st.caption("Nenhuma foto localizada para este poço.")
                         with st.expander("🎥 VÍDEOS SALVOS"):
                             if videos_filtrados:
                                 for v in reversed(videos_filtrados):
                                     st.write(f"📅 {v['data']}")
-                                    if os.path.exists(v['caminho']): st.video(v['caminho'])
+                                    st.video(v['caminho'])
                                     st.divider()
                             else: st.caption("Nenhum vídeo localizado para este poço.")
                     else: st.caption("Nenhuma mídia registrada para este colaborador neste mês.")
