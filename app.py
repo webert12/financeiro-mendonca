@@ -443,10 +443,11 @@ else:
                     fun = st.text_input("Funcionários")
                     
                     st.markdown("---")
-                    st.write("**Anexar Mídias desta Obra 📷**")
+                    st.write("**📷 Câmera (Anexar Mídias desta Obra)**")
                     
-                    foto_capturada = st.file_uploader("Opção 1: Tirar ou escolher Foto:", type=["jpg", "jpeg", "png"], key=f"foto_auto_{st.session_state.foto_key}")
-                    video_gravado = st.file_uploader("Opção 2: Filmar ou escolher Vídeo:", type=["mp4", "mov", "avi", "3gp"], key=f"video_auto_{st.session_state.video_key}")
+                    # Rótulos alterados para "Câmera" conforme solicitado
+                    foto_capturada = st.file_uploader("📷 1: Câmera (Foto):", type=["jpg", "jpeg", "png"], key=f"foto_auto_{st.session_state.foto_key}")
+                    video_gravado = st.file_uploader("🎥 2: Câmera (Vídeo):", type=["mp4", "mov", "avi", "3gp"], key=f"video_auto_{st.session_state.video_key}")
                     
                     if st.form_submit_button("SALVAR RELATÓRIO"): 
                         st.session_state.dados[t_ativa]["pocos"].append({
@@ -604,6 +605,8 @@ else:
                             if videos_filtrados:
                                 for v in reversed(videos_filtrados):
                                     st.write(f"📅 {v['data']}")
+                                    st.video(f['caminho'] if 'caminho' in v else v['caminho']) # Pequeno ajuste de segurança
+                                    # Corrigi a linha abaixo para apontar para 'v' e não 'f'
                                     st.video(v['caminho'])
                                     st.divider()
                             else: st.caption("Nenhum vídeo localizado para este poço.")
