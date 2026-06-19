@@ -27,7 +27,7 @@ LIMITE_DINHEIRO_SEMANAL = 500.00
 # Lista estática de equipes autorizadas no sistema
 TURMAS = ["Rafael", "Ednaldo", "Luiz Felipe", "Carlos", "Cardoso", "Guilherme", "Paulo"]
 
-# --- FUNÇÃO DE CONEXÃO DIRETA COM O STREAMLIT SECRETS ---
+# --- FUNÇÃO DE CONEXÃO DIRETA WITH O STREAMLIT SECRETS ---
 def obter_conexao():
     return psycopg2.connect(st.secrets["URL_BANCO"])
 
@@ -262,7 +262,7 @@ else:
             meses = sorted(list(set(t.get("ano_mes", datetime.now(FUSO_BRASILIA).strftime("%Y-%m")) for t in hist + pocos + midias)), reverse=True) 
             if meses: 
                 mes_sel = st.selectbox("Escolha o mês", meses, key="mes_sel_adm") 
-                sub_f, sub_p, sub_m = st.tabs(["💰 Custos", "🚰 Poços", "📷 Mídias"]) 
+                sub_f, sub_p, sub_m = st.tabs(["💰 Custos", "𚚰 Poços", "📷 Mídias"]) 
                 
                 with sub_f: 
                     t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
@@ -649,7 +649,7 @@ else:
             meses = sorted(list(set(t.get("ano_mes", datetime.now(FUSO_BRASILIA).strftime("%Y-%m")) for t in hist + pocos + midias)), reverse=True) 
             if meses: 
                 mes_sel = st.selectbox("Escolha o mês", meses, key="mes_sel_turma") 
-                sub_f, sub_p, sub_m = st.tabs(["💰 Custos", "🚰 Poços", "📷 Mídias"]) 
+                sub_f, sub_p, sub_m = st.tabs(["💰 Custos", "𚚰 Poços", "📷 Mídias"]) 
                 
                 with sub_f: 
                     t_mes = [t for t in hist if t.get("ano_mes") == mes_sel] 
@@ -660,7 +660,8 @@ else:
                         if dias_pdf_sel:
                             t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
                             linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
-                            pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa}", lines_pdf_fin)
+                            # LINHA CORRIGIDA ABAIXO (linhas_pdf_fin em vez de lines_pdf_fin)
+                            pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa}", linhas_pdf_fin) 
                             st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{t_ativa}_{mes_sel}.pdf", "application/pdf") 
                         else:
                             st.warning("Selecione pelo menos um dia para gerar o relatório PDF.")
