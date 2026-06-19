@@ -378,6 +378,8 @@ else:
                                 novo_mt = st.text_input("Metragem", value=p_baixar.get('metragem', ''))
                                 novo_fun = st.text_input("Funcionários", value=p_baixar.get('funcionarios', ''))
                                 novo_mat = st.text_area("Material", value=p_baixar.get('material', ''))
+                                novo_fun = st.text_input("Funcionários", value=p_baixar.get('funcionarios', ''))
+                                novo_mat = st.text_area("Material", value=p_baixar.get('material', ''))
                                 novo_obs = st.text_area("Observações Técnicas", value=p_baixar.get('obs_tecnica', ''))
                                 
                                 if st.form_submit_button("💾 Salvar Alterações"):
@@ -524,6 +526,12 @@ else:
                         
             mostrar_pocos = st.toggle("🚰 Poços Perfurados", value=False) 
             if mostrar_pocos: 
+                # --- ATUALIZAÇÃO REQUERIDA: FILE UPLOADERS MOVECIDOS PARA FORA DO FORM ---
+                st.markdown("---")
+                st.write("**Anexar Mídias desta Obra 📷**")
+                foto_capturada = st.file_uploader("Câmera (Foto):", type=["jpg", "jpeg", "png"], key=f"foto_auto_{st.session_state.foto_key}")
+                video_gravado = st.file_uploader("Câmera (Vídeo):", type=["mp4", "mov", "avi", "3gp"], key=f"video_auto_{st.session_state.video_key}")
+                
                 with st.form("form_pocos", clear_on_submit=True): 
                     cl = st.text_input("Cliente")
                     tel = st.text_input("Telefone")
@@ -565,12 +573,6 @@ else:
                     
                     st.subheader("Dados Técnicos Adicionais")
                     obs_tecnica = st.text_area("Observações Técnicas")
-                    
-                    st.markdown("---")
-                    st.write("**Anexar Mídias desta Obra 📷**")
-                    
-                    foto_capturada = st.file_uploader("Câmera (Foto):", type=["jpg", "jpeg", "png"], key=f"foto_auto_{st.session_state.foto_key}")
-                    video_gravado = st.file_uploader("Câmera (Vídeo):", type=["mp4", "mov", "avi", "3gp"], key=f"video_auto_{st.session_state.video_key}")
                     
                     if st.form_submit_button("SALVAR RELATÓRIO"): 
                         st.session_state.dados[t_ativa]["pocos"].append({
@@ -660,7 +662,6 @@ else:
                         if dias_pdf_sel:
                             t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
                             linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
-                            # LINHA CORRIGIDA ABAIXO (linhas_pdf_fin em vez de lines_pdf_fin)
                             pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa}", linhas_pdf_fin) 
                             st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{t_ativa}_{mes_sel}.pdf", "application/pdf") 
                         else:
@@ -802,7 +803,7 @@ else:
                             f"Metragem Perfurada: {p_baixar.get('metragem', '')} metros", f"Funcionarios na Obra: {p_baixar.get('funcionarios', '')}", 
                             f"Materiais Utilizados: {p_baixar.get('material', '')}", f"Obs. Técnica: {p_baixar.get('obs_tecnica', '')}"
                         ]
-                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar.get('cliente', 'Sem Nome')}", linhas_pdf_poco)
+                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar.get('cliente', 'Sem Nome')}", lines_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar.get('cliente', 'SemNome')}_{p_baixar.get('data', '').replace('/','-')}.pdf", "application/pdf") 
                     else: 
                         st.caption("Nenhum poço encontrado.")
