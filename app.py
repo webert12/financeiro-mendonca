@@ -378,8 +378,6 @@ else:
                                 novo_mt = st.text_input("Metragem", value=p_baixar.get('metragem', ''))
                                 novo_fun = st.text_input("Funcionários", value=p_baixar.get('funcionarios', ''))
                                 novo_mat = st.text_area("Material", value=p_baixar.get('material', ''))
-                                novo_fun = st.text_input("Funcionários", value=p_baixar.get('funcionarios', ''))
-                                novo_mat = st.text_area("Material", value=p_baixar.get('material', ''))
                                 novo_obs = st.text_area("Observações Técnicas", value=p_baixar.get('obs_tecnica', ''))
                                 
                                 if st.form_submit_button("💾 Salvar Alterações"):
@@ -398,7 +396,7 @@ else:
                                         "obs_tecnica": novo_obs
                                     })
                                     salvar_dados(st.session_state.dados)
-                                    st.success("Relatório atualizado com sucesso!")
+                                    st.success("Relatório updated com sucesso!")
                                     st.rerun()
                         
                         linhas_pdf_poco = [
@@ -526,7 +524,6 @@ else:
                         
             mostrar_pocos = st.toggle("🚰 Poços Perfurados", value=False) 
             if mostrar_pocos: 
-                # --- ATUALIZAÇÃO REQUERIDA: FILE UPLOADERS MOVECIDOS PARA FORA DO FORM ---
                 st.markdown("---")
                 st.write("**Anexar Mídias desta Obra 📷**")
                 foto_capturada = st.file_uploader("Câmera (Foto):", type=["jpg", "jpeg", "png"], key=f"foto_auto_{st.session_state.foto_key}")
@@ -803,7 +800,8 @@ else:
                             f"Metragem Perfurada: {p_baixar.get('metragem', '')} metros", f"Funcionarios na Obra: {p_baixar.get('funcionarios', '')}", 
                             f"Materiais Utilizados: {p_baixar.get('material', '')}", f"Obs. Técnica: {p_baixar.get('obs_tecnica', '')}"
                         ]
-                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar.get('cliente', 'Sem Nome')}", lines_pdf_poco)
+                        # LINHA CORRIGIDA ABAIXO (linhas_pdf_poco):
+                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar.get('cliente', 'Sem Nome')}", linhas_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar.get('cliente', 'SemNome')}_{p_baixar.get('data', '').replace('/','-')}.pdf", "application/pdf") 
                     else: 
                         st.caption("Nenhum poço encontrado.")
