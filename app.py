@@ -29,7 +29,6 @@ TURMAS = ["Rafael", "Ednaldo", "Luiz Felipe", "Carlos", "Cardoso", "Guilherme", 
 
 # --- FUNÇÃO DE CONEXÃO DIRETA COM O STREAMLIT SECRETS ---
 def obter_conexao():
-    # O código vai ler a URL que você colou no painel do Streamlit
     return psycopg2.connect(st.secrets["URL_BANCO"])
 
 # Trata dados do banco garantindo que venham como listas/dicionários legíveis
@@ -274,7 +273,7 @@ else:
                         if dias_pdf_sel:
                             t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
                             linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
-                            pdf_financeiro = exportar_para_pdf(f"Custos - {target_turma} - Filtro customizado", lines_pdf_fin)
+                            pdf_financeiro = exportar_para_pdf(f"Custos - {target_turma} - Filtro customizado", linhas_pdf_fin)
                             st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{target_turma}_{mes_sel}.pdf", "application/pdf")
                         else:
                             st.warning("Selecione ao menos 1 dia para gerar o PDF.")
@@ -441,6 +440,9 @@ else:
                     mt = st.text_input("Metragem")
                     mat = st.text_area("Material")
                     fun = st.text_input("Funcionários")
+                    # -- ATUALIZAÇÃO: NOVOS CAMPOS TÉCNICOS --
+                    st.subheader("Dados Técnicos Adicionais")
+                    obs_tecnica = st.text_area("Observações Técnicas")
                     
                     st.markdown("---")
                     st.write("**Anexar Mídias desta Obra 📷**")
@@ -452,7 +454,8 @@ else:
                         st.session_state.dados[t_ativa]["pocos"].append({
                             "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y"), 
                             "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), 
-                            "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun
+                            "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun,
+                            "obs_tecnica": obs_tecnica # Salva novo campo
                         }) 
                         
                         nome_poco_vinculo = f"{cl} ({ci})" if (cl or ci) else "Geral / Sem Poço Específico"
@@ -552,7 +555,8 @@ else:
                             <b>🏙️ Cidade:</b> {p_baixar['cidade']}<br>
                             <b>📏 Metragem Perfurada:</b> {p_baixar['metragem']} metros<br>
                             <b>👥 Funcionários na Obra:</b> {p_baixar['funcionarios']}<br>
-                            <b>🧱 Materiais Utilizados:</b><br>{p_baixar['material']}
+                            <b>🧱 Materiais Utilizados:</b><br>{p_baixar['material']}<br>
+                            <b>🛠️ Obs. Técnica:</b> {p_baixar.get('obs_tecnica', 'Nenhuma')}
                         </div>
                         """, unsafe_allow_html=True)
                         
@@ -563,11 +567,13 @@ else:
                                 novo_mt = st.text_input("Metragem", value=p_baixar['metragem'])
                                 novo_fun = st.text_input("Funcionários", value=p_baixar['funcionarios'])
                                 novo_mat = st.text_area("Material", value=p_baixar['material'])
+                                novo_obs = st.text_area("Observações Técnicas", value=p_baixar.get('obs_tecnica', ''))
                                 
                                 if st.form_submit_button("💾 Salvar Alterações"):
                                     idx_original = next(i for i, p in enumerate(st.session_state.dados[t_ativa]["pocos"]) if id(p) == id(p_baixar))
                                     st.session_state.dados[t_ativa]["pocos"][idx_original].update({
-                                        "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun
+                                        "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun,
+                                        "obs_tecnica": novo_obs
                                     })
                                     salvar_dados(st.session_state.dados)
                                     st.success("Relatório corrigido com sucesso!")
@@ -575,7 +581,8 @@ else:
                         
                         linhas_pdf_poco = [
                             f"Data de Registro: {p_baixar['data']}", f"Cliente: {p_baixar['cliente']}", f"Cidade: {p_baixar['cidade']}",
-                            f"Metragem Perfurada: {p_baixar['metragem']} metros", f"Funcionarios na Obra: {p_baixar['funcionarios']}", f"Materiais Utilizados: {p_baixar['material']}"
+                            f"Metragem Perfurada: {p_baixar['metragem']} metros", f"Funcionarios na Obra: {p_baixar['funcionarios']}", 
+                            f"Materiais Utilizados: {p_baixar['material']}", f"Obs. Técnica: {p_baixar.get('obs_tecnica', '')}"
                         ]
                         pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
