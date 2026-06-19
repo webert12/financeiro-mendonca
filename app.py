@@ -299,7 +299,8 @@ else:
                             <b>🏙️ Cidade:</b> {p_baixar['cidade']}<br>
                             <b>📏 Metragem Perfurada:</b> {p_baixar['metragem']} metros<br>
                             <b>👥 Funcionários na Obra:</b> {p_baixar['funcionarios']}<br>
-                            <b>🧱 Materiais Utilizados:</b><br>{p_baixar['material']}
+                            <b>🧱 Materiais Utilizados:</b><br>{p_baixar['material']}<br>
+                            <b>🛠️ Obs. Técnica:</b> {p_baixar.get('obs_tecnica', 'Nenhuma')}
                         </div>
                         """, unsafe_allow_html=True)
                         
@@ -310,19 +311,22 @@ else:
                                 novo_mt = st.text_input("Metragem", value=p_baixar['metragem'])
                                 novo_fun = st.text_input("Funcionários", value=p_baixar['funcionarios'])
                                 novo_mat = st.text_area("Material", value=p_baixar['material'])
+                                novo_obs = st.text_area("Observações Técnicas", value=p_baixar.get('obs_tecnica', ''))
                                 
                                 if st.form_submit_button("💾 Salvar Alterações"):
                                     idx_original = next(i for i, p in enumerate(st.session_state.dados[target_turma]["pocos"]) if id(p) == id(p_baixar))
                                     st.session_state.dados[target_turma]["pocos"][idx_original].update({
-                                        "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun
+                                        "cliente": novo_cl, "cidade": novo_ci, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun,
+                                        "obs_tecnica": novo_obs
                                     })
                                     salvar_dados(st.session_state.dados)
-                                    st.success("Relatório updated com sucesso!")
+                                    st.success("Relatório atualizado com sucesso!")
                                     st.rerun()
                         
                         linhas_pdf_poco = [
                             f"Data de Registro: {p_baixar['data']}", f"Cliente: {p_baixar['cliente']}", f"Cidade: {p_baixar['cidade']}",
-                            f"Metragem Perfurada: {p_baixar['metragem']} metros", f"Funcionarios na Obra: {p_baixar['funcionarios']}", f"Materiais Utilizados: {p_baixar['material']}"
+                            f"Metragem Perfurada: {p_baixar['metragem']} metros", f"Funcionarios na Obra: {p_baixar['funcionarios']}", 
+                            f"Materiais Utilizados: {p_baixar['material']}", f"Obs. Técnica: {p_baixar.get('obs_tecnica', '')}"
                         ]
                         pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", linhas_pdf_poco)
                         st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
@@ -455,7 +459,7 @@ else:
                             "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y"), 
                             "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), 
                             "cliente": cl, "cidade": ci, "metragem": mt, "material": mat, "funcionarios": fun,
-                            "obs_tecnica": obs_tecnica # Salva novo campo
+                            "obs_tecnica": obs_tecnica
                         }) 
                         
                         nome_poco_vinculo = f"{cl} ({ci})" if (cl or ci) else "Geral / Sem Poço Específico"
