@@ -289,18 +289,133 @@ else:
                 with sub_p: 
                     p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel] 
                     if p_mes: 
-                        sel_poco = st.selectbox("Escolha o poço para analisar/baixar:", [f"{p['data']} - {p['cliente']}" for p in p_mes], key="sel_poco_adm") 
-                        p_baixar = next(p for p in p_mes if f"{p['data']} - {p['cliente']}" == sel_poco) 
+                        sel_poco = st.selectbox("Escolha o poço para analisar/baixar:", [f"{p.get('data', 'Sem Data')} - {p.get('cliente', 'Sem Nome')}" for p in p_mes], key="sel_poco_adm") 
+                        p_baixar = next(p for p in p_mes if f"{p.get('data', 'Sem Data')} - {p.get('cliente', 'Sem Nome')}" == sel_poco) 
                         
-                        st.markdown(f"**Detalhes do Poço:**")
-                        st.write(p_baixar) # Exibição simplificada dos dados técnicos salvos
+                        st.markdown(f"""
+                        <div style='background-color: #1e293b; padding: 15px; border-radius: 8px; border-left: 5px solid #0047AB; margin-bottom: 15px;'>
+                            <h4 style='margin-top:0;'>📋 Dados do Relatório</h4>
+                            <b>📍 Cliente:</b> {p_baixar.get('cliente', '')}<br>
+                            <b>📞 Telefone:</b> {p_baixar.get('telefone', '')}<br>
+                            <b>🏠 Endereço do Poço:</b> {p_baixar.get('endereco_poco', '')}<br>
+                            <b>🏙️ Cidade:</b> {p_baixar.get('cidade', '')}<br>
+                            <b>📅 Data da Elaboração:</b> {p_baixar.get('data_elaboracao', '')}<br>
+                            <b>⚙️ Método de Perfuração:</b> {p_baixar.get('metodo_perfuracao', '')}<br>
+                            <b>📏 Profundidade do Poço:</b> {p_baixar.get('profundidade_poco', '')}<br>
+                            <b>🌱 Perfuração em Solo (Metros):</b> {p_baixar.get('perfuracao_solo_metros', '')}<br>
+                            <b>🛡️ Tipo de Revestimento:</b> {p_baixar.get('tipo_revestimento', '')}<br>
+                            <b>📦 Quantidade de Revestimento:</b> {p_baixar.get('quantidade_revestimento', '')}<br>
+                            <b>🚰 Tubo de Retirada de Água e Qtd (MT):</b> {p_baixar.get('tubo_retirada_agua_qtde', '')}<br>
+                            <b>🔌 Tipo de Cabo e Qtd (MT):</b> {p_baixar.get('tipo_cabo_qtde', '')}<br>
+                            <b>🧹 Tipo de Filtro:</b> {p_baixar.get('tipo_filtro', '')}<br>
+                            <b>📏 Metros de Filtro:</b> {p_baixar.get('quantos_metros_filtro', '')}<br>
+                            <b>⏳ Tipo de Pré Filtro:</b> {p_baixar.get('tipo_pre_filtro', '')}<br>
+                            <b>🧱 Cimentação do Espaço Anelar?:</b> {p_baixar.get('fez_cimentacao', '')}<br>
+                            <b>🧰 Laje de Proteção Sanitária?:</b> {p_baixar.get('fez_laje_protecao', '')}<br>
+                            <b>🪨 Qtd de Pré Filtro (Brita):</b> {p_baixar.get('quantidade_pre_filtro_brita', '')}<br>
+                            <b>🔒 Tampa:</b> {p_baixar.get('tampa', '')}<br>
+                            <b>🔗 Conexões Utilizadas:</b> {p_baixar.get('conexoes_utilizadas', '')}<br>
+                            <b>💧 Nível Estático:</b> {p_baixar.get('nivel_estatico', '')}<br>
+                            <b>🌊 Nível Dinâmico:</b> {p_baixar.get('nivel_dinamico', '')}<br>
+                            <b>📉 Profundidade da Bomba:</b> {p_baixar.get('profundidade_bomba', '')}<br>
+                            <b>🚀 Modelo da Bomba:</b> {p_baixar.get('modelo_bomba', '')}<br>
+                            <b>💨 Vazão:</b> {p_baixar.get('vazao', '')}<br>
+                            <b>⚡ Fendas de Água:</b> {p_baixar.get('fendas_agua', '')}<br>
+                            <b>🌐 Coordenadas:</b> {p_baixar.get('coordenadas', '')}<br>
+                            <b>💎 Diâmetro Perf. em Rocha (MM):</b> {p_baixar.get('diametro_perf_rocha_mm', '')}<br>
+                            <b>🪵 Diâmetro Perf. em Solo (MM):</b> {p_baixar.get('diametro_perf_solo_mm', '')}<br>
+                            <b>⏳ Solo Argiloso ou Arenoso:</b> {p_baixar.get('solo_argiloso_arenoso', '')}<br>
+                            <b>📏 Metragem Perfurada:</b> {p_baixar.get('metragem', '')} metros<br>
+                            <b>👥 Funcionários na Obra:</b> {p_baixar.get('funcionarios', '')}<br>
+                            <b>🧱 Materiais Utilizados:</b><br>{p_baixar.get('material', '')}<br>
+                            <b>🛠️ Obs. Técnica:</b> {p_baixar.get('obs_tecnica', 'Nenhuma')}
+                        </div>
+                        """, unsafe_allow_html=True)
                         
                         if st.checkbox("✏️ Corrigir/Editar este Relatório (ADM)", key="edit_mode_adm"):
-                            # Implementação simplificada de edição para manter o tamanho do código viável
-                            st.info("Funcionalidade de edição disponível para revisão.")
+                            with st.form("form_editar_poco_adm"):
+                                novo_cl = st.text_input("Cliente", value=p_baixar.get('cliente', ''))
+                                novo_tel = st.text_input("Telefone", value=p_baixar.get('telefone', ''))
+                                novo_end_poco = st.text_input("Endereço do Poço", value=p_baixar.get('endereco_poco', ''))
+                                novo_ci = st.text_input("Cidade", value=p_baixar.get('cidade', ''))
+                                novo_data_elab = st.text_input("Data da Elaboração", value=p_baixar.get('data_elaboracao', ''))
+                                novo_metodo_perf = st.text_input("Método de Perfuração", value=p_baixar.get('metodo_perfuracao', ''))
+                                novo_prof_poco = st.text_input("Profundidade do Poço", value=p_baixar.get('profundidade_poco', ''))
+                                novo_perf_solo_mt = st.text_input('Perfuração em Solo "Quantos Metros"', value=p_baixar.get('perfuracao_solo_metros', ''))
+                                novo_tipo_revest = st.text_input("Tipo de Revestimento", value=p_baixar.get('tipo_revestimento', ''))
+                                novo_qtd_revest = st.text_input("Quantidade de Revestimento", value=p_baixar.get('quantidade_revestimento', ''))
+                                novo_tubo_retirada = st.text_input("Tubo de Retirada de Água e Qtde. (MT)", value=p_baixar.get('tubo_retirada_agua_qtde', ''))
+                                novo_tipo_cabo = st.text_input("Tipo de Cabo e Qtde. (MT)", value=p_baixar.get('tipo_cabo_qtde', ''))
+                                novo_tipo_filtro = st.text_input("Tipo de Filtro", value=p_baixar.get('tipo_filtro', ''))
+                                novo_metros_filtro = st.text_input("Quantos Metros de Filtro", value=p_baixar.get('quantos_metros_filtro', ''))
+                                novo_tipo_pre_filtro = st.text_input("Tipo de Pré Filtro", value=p_baixar.get('tipo_pre_filtro', ''))
+                                
+                                opcoes_cimentacao = ["Sim", "Não"]
+                                idx_cim = opcoes_cimentacao.index(p_baixar.get('fez_cimentacao', 'Sim')) if p_baixar.get('fez_cimentacao', 'Sim') in opcoes_cimentacao else 0
+                                novo_fez_cimentacao = st.selectbox("Fez Cimentação do Espaço Anelar?", opcoes_cimentacao, index=idx_cim)
+                                
+                                opcoes_laje = ["Sim", "Não"]
+                                idx_laj = opcoes_laje.index(p_baixar.get('fez_laje_protecao', 'Sim')) if p_baixar.get('fez_laje_protecao', 'Sim') in opcoes_laje else 0
+                                novo_fez_laje = st.selectbox("Fez Laje de Proteção Sanitária?", opcoes_laje, index=idx_laj)
+                                
+                                novo_qtd_pre_filtro = st.text_input("Quantidade de Pré Filtro? (Brita)", value=p_baixar.get('quantidade_pre_filtro_brita', ''))
+                                novo_tampa = st.text_input("Tampa", value=p_baixar.get('tampa', ''))
+                                novo_conexoes = st.text_area("Conexões Utilizadas", value=p_baixar.get('conexoes_utilizadas', ''))
+                                novo_nivel_estatico = st.text_input("Nível Estático", value=p_baixar.get('nivel_estatico', ''))
+                                novo_nivel_dinamico = st.text_input("Nível Diâmico", value=p_baixar.get('nivel_dinamico', ''))
+                                novo_prof_bomba = st.text_input("Profundidade da Bomba", value=p_baixar.get('profundidade_bomba', ''))
+                                novo_mod_bomba = st.text_input("Modelo da Bomba", value=p_baixar.get('modelo_bomba', ''))
+                                novo_vazao = st.text_input("Vazão", value=p_baixar.get('vazao', ''))
+                                novo_fendas_agua = st.text_input("Fendas de Água", value=p_baixar.get('fendas_agua', ''))
+                                novo_coordenadas = st.text_input("Coordenadas", value=p_baixar.get('coordenadas', ''))
+                                novo_diam_rocha = st.text_input("Diâmetro Perf. em Rocha e MM", value=p_baixar.get('diametro_perf_rocha_mm', ''))
+                                novo_diam_solo = st.text_input("Diâmetro Perf. em Solo e MM", value=p_baixar.get('diametro_perf_solo_mm', ''))
+                                
+                                opcoes_solo = ["Argiloso", "Arenoso", "Misto", "Outro"]
+                                idx_solo = opcoes_solo.index(p_baixar.get('solo_argiloso_arenoso', 'Argiloso')) if p_baixar.get('solo_argiloso_arenoso', 'Argiloso') in opcoes_solo else 0
+                                novo_tipo_solo = st.selectbox("Solo Argiloso ou Arenoso", opcoes_solo, index=idx_solo)
+                                
+                                novo_mt = st.text_input("Metragem", value=p_baixar.get('metragem', ''))
+                                novo_fun = st.text_input("Funcionários", value=p_baixar.get('funcionarios', ''))
+                                novo_mat = st.text_area("Material", value=p_baixar.get('material', ''))
+                                novo_obs = st.text_area("Observações Técnicas", value=p_baixar.get('obs_tecnica', ''))
+                                
+                                if st.form_submit_button("💾 Salvar Alterações"):
+                                    idx_original = next(i for i, p in enumerate(st.session_state.dados[target_turma]["pocos"]) if id(p) == id(p_baixar))
+                                    st.session_state.dados[target_turma]["pocos"][idx_original].update({
+                                        "cliente": novo_cl, "telefone": novo_tel, "endereco_poco": novo_end_poco, "cidade": novo_ci,
+                                        "data_elaboracao": novo_data_elab, "metodo_perfuracao": novo_metodo_perf, "profundidade_poco": novo_prof_poco,
+                                        "perfuracao_solo_metros": novo_perf_solo_mt, "tipo_revestimento": novo_tipo_revest, "quantidade_revestimento": novo_qtd_revest,
+                                        "tubo_retirada_agua_qtde": novo_tubo_retirada, "tipo_cabo_qtde": novo_tipo_cabo, "tipo_filtro": novo_tipo_filtro,
+                                        "quantos_metros_filtro": novo_metros_filtro, "tipo_pre_filtro": novo_tipo_pre_filtro, "fez_cimentacao": novo_fez_cimentacao,
+                                        "fez_laje_protecao": novo_fez_laje, "quantidade_pre_filtro_brita": novo_qtd_pre_filtro, "tampa": novo_tampa,
+                                        "conexoes_utilizadas": novo_conexoes, "nivel_estatico": novo_nivel_estatico, "nivel_dinamico": novo_nivel_dinamico,
+                                        "profundidade_bomba": novo_prof_bomba, "modelo_bomba": novo_mod_bomba, "vazao": novo_vazao, "fendas_agua": novo_fendas_agua,
+                                        "coordenadas": novo_coordenadas, "diametro_perf_rocha_mm": novo_diam_rocha, "diametro_perf_solo_mm": novo_diam_solo,
+                                        "solo_argiloso_arenoso": novo_tipo_solo, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun,
+                                        "obs_tecnica": novo_obs
+                                    })
+                                    salvar_dados(st.session_state.dados)
+                                    st.success("Relatório atualizado com sucesso!")
+                                    st.rerun()
                         
-                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar['cliente']}", [str(p_baixar)])
-                        st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar['cliente']}_{p_baixar['data'].replace('/','-')}.pdf", "application/pdf") 
+                        linhas_pdf_poco = [
+                            f"Data de Registro: {p_baixar.get('data', '')}",
+                            f"Cliente: {p_baixar.get('cliente', '')}", f"Telefone: {p_baixar.get('telefone', '')}", f"Endereço do Poço: {p_baixar.get('endereco_poco', '')}", f"Cidade: {p_baixar.get('cidade', '')}",
+                            f"Data da Elaboração: {p_baixar.get('data_elaboracao', '')}", f"Método de Perfuração: {p_baixar.get('metodo_perfuracao', '')}", f"Profundidade do Poço: {p_baixar.get('profundidade_poco', '')}",
+                            f"Perfuração em Solo (m): {p_baixar.get('perfuracao_solo_metros', '')}", f"Tipo de Revestimento: {p_baixar.get('tipo_revestimento', '')}", f"Quantidade de Revestimento: {p_baixar.get('quantidade_revestimento', '')}",
+                            f"Tubo Retirada e Qtd: {p_baixar.get('tubo_retirada_agua_qtde', '')}", f"Tipo de Cabo e Qtd (m): {p_baixar.get('tipo_cabo_qtde', '')}", f"Tipo de Filtro: {p_baixar.get('tipo_filtro', '')}",
+                            f"Metros de Filtro: {p_baixar.get('quantos_metros_filtro', '')}", f"Tipo de Pré Filtro: {p_baixar.get('tipo_pre_filtro', '')}", f"Fez Cimentação?: {p_baixar.get('fez_cimentacao', '')}",
+                            f"Fez Laje Proteção?: {p_baixar.get('fez_laje_protecao', '')}", f"Qtd Pré Filtro (Brita): {p_baixar.get('quantidade_pre_filtro_brita', '')}", f"Tampa: {p_baixar.get('tampa', '')}",
+                            f"Conexões Utilizadas: {p_baixar.get('conexoes_utilizadas', '')}", f"Nível Estático: {p_baixar.get('nivel_estatico', '')}", f"Nível Dinâmico: {p_baixar.get('nivel_dinamico', '')}",
+                            f"Profundidade da Bomba: {p_baixar.get('profundidade_bomba', '')}", f"Modelo da Bomba: {p_baixar.get('modelo_bomba', '')}", f"Vazão: {p_baixar.get('vazao', '')}",
+                            f"Fendas de Água: {p_baixar.get('fendas_agua', '')}", f"Coordenadas: {p_baixar.get('coordenadas', '')}", f"Diâmetro Perf. Rocha (mm): {p_baixar.get('diametro_perf_rocha_mm', '')}",
+                            f"Diâmetro Perf. Solo (mm): {p_baixar.get('diametro_perf_solo_mm', '')}", f"Solo Argiloso/Arenoso: {p_baixar.get('solo_argiloso_arenoso', '')}",
+                            f"Metragem Perfurada: {p_baixar.get('metragem', '')} metros", f"Funcionarios na Obra: {p_baixar.get('funcionarios', '')}", 
+                            f"Materiais Utilizados: {p_baixar.get('material', '')}", f"Obs. Técnica: {p_baixar.get('obs_tecnica', '')}"
+                        ]
+                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar.get('cliente', 'Sem Nome')}", linhas_pdf_poco)
+                        st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar.get('cliente', 'SemNome')}_{p_baixar.get('data', '').replace('/','-')}.pdf", "application/pdf") 
                     else: 
                         st.caption("Nenhum poço encontrado.")
                 
@@ -410,80 +525,114 @@ else:
             mostrar_pocos = st.toggle("🚰 Poços Perfurados", value=False) 
             if mostrar_pocos: 
                 with st.form("form_pocos", clear_on_submit=True): 
-                    cliente = st.text_input("Cliente")
-                    telefone = st.text_input("Telefone")
-                    endereco = st.text_input("Endereço do Poço")
-                    data_elaboracao = st.date_input("Data da Elaboração")
+                    cl = st.text_input("Cliente")
+                    tel = st.text_input("Telefone")
+                    end_poco = st.text_input("Endereço do Poço")
+                    ci = st.text_input("Cidade")
+                    data_elab = st.text_input("Data da Elaboração (Dia que foi feito)")
                     metodo_perf = st.text_input("Método de Perfuração")
-                    profundidade = st.text_input("Profundidade do Poço")
-                    perf_solo_metros = st.text_input("Perfuração em Solo (Quantos metros)")
-                    tipo_rev = st.text_input("Tipo de Revestimento")
-                    qtd_rev = st.text_input("Quantidade de Revestimento")
-                    tubo_retirada = st.text_input("Tubo de retirada de água e Qtde (MT)")
-                    tipo_cabo = st.text_input("Tipo de cabo e Qtde (MT)")
+                    prof_poco = st.text_input("Profundidade do Poço")
+                    perf_solo_mt = st.text_input('Perfuração em Solo "Quantos Metros"')
+                    tipo_revest = st.text_input("Tipo de Revestimento")
+                    qtd_revest = st.text_input("Quantidade de Revestimento")
+                    tubo_retirada = st.text_input("Tubo de Retirada de Água e Qtde. (MT)")
+                    tipo_cabo = st.text_input("Tipo de Cabo e Qtde. (MT)")
                     tipo_filtro = st.text_input("Tipo de Filtro")
-                    metros_filtro = st.text_input("Quantos metros de filtro")
-                    tipo_pre_filtro = st.text_input("Tipo de pré filtro")
-                    cimentacao = st.selectbox("Fez cimentação do espaço anelar?", ["Sim", "Não"])
-                    laje = st.selectbox("Fez laje de proteção sanitária?", ["Sim", "Não"])
-                    qtd_pre_filtro = st.text_input("Quantidade de pré filtro (Brita)")
+                    metros_filtro = st.text_input("Quantos Metros de Filtro")
+                    tipo_pre_filtro = st.text_input("Tipo de Pré Filtro")
+                    
+                    fez_cimentacao = st.selectbox("Fez Cimentação do Espaço Anelar?", ["Sim", "Não"])
+                    fez_laje = st.selectbox("Fez Laje de Proteção Sanitária?", ["Sim", "Não"])
+                    
+                    qtd_pre_filtro = st.text_input("Quantidade de Pré Filtro? (Brita)")
                     tampa = st.text_input("Tampa")
-                    conexoes = st.text_input("Conexões utilizadas")
+                    conexoes = st.text_area("Conexões Utilizadas")
                     nivel_estatico = st.text_input("Nível Estático")
                     nivel_dinamico = st.text_input("Nível Dinâmico")
-                    prof_bomba = st.text_input("Profundidade da bomba")
-                    modelo_bomba = st.text_input("Modelo da bomba")
+                    prof_bomba = st.text_input("Profundidade da Bomba")
+                    mod_bomba = st.text_input("Modelo da Bomba")
                     vazao = st.text_input("Vazão")
-                    fendas = st.text_input("Fendas de água")
+                    fendas_agua = st.text_input("Fendas de Água")
                     coordenadas = st.text_input("Coordenadas")
-                    diam_rocha = st.text_input("Diâmetro perf. em rocha (MM)")
-                    diam_solo = st.text_input("Diâmetro perf. em solo (MM)")
-                    tipo_solo = st.text_input("Solo argiloso ou arenoso")
-                    obs = st.text_area("Observações Técnicas")
+                    diam_rocha = st.text_input("Diâmetro Perf. em Rocha e MM")
+                    diam_solo = st.text_input("Diâmetro Perf. em Solo e MM")
+                    
+                    tipo_solo = st.selectbox("Solo Argiloso ou Arenoso", ["Argiloso", "Arenoso", "Misto", "Outro"])
+                    
+                    mt = st.text_input("Metragem")
+                    mat = st.text_area("Material")
+                    fun = st.text_input("Funcionários")
+                    
+                    st.subheader("Dados Técnicos Adicionais")
+                    obs_tecnica = st.text_area("Observações Técnicas")
                     
                     st.markdown("---")
                     st.write("**Anexar Mídias desta Obra 📷**")
+                    
                     foto_capturada = st.file_uploader("Câmera (Foto):", type=["jpg", "jpeg", "png"], key=f"foto_auto_{st.session_state.foto_key}")
                     video_gravado = st.file_uploader("Câmera (Vídeo):", type=["mp4", "mov", "avi", "3gp"], key=f"video_auto_{st.session_state.video_key}")
                     
                     if st.form_submit_button("SALVAR RELATÓRIO"): 
                         st.session_state.dados[t_ativa]["pocos"].append({
-                            "data_registro": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y"), 
+                            "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y"), 
                             "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), 
-                            "cliente": cliente, "telefone": telefone, "endereco": endereco,
-                            "data_elaboracao": str(data_elaboracao), "metodo_perf": metodo_perf,
-                            "profundidade": profundidade, "perf_solo_metros": perf_solo_metros,
-                            "tipo_rev": tipo_rev, "qtd_rev": qtd_rev, "tubo_retirada": tubo_retirada,
-                            "tipo_cabo": tipo_cabo, "tipo_filtro": tipo_filtro, "metros_filtro": metros_filtro,
-                            "tipo_pre_filtro": tipo_pre_filtro, "cimentacao": cimentacao, "laje": laje,
-                            "qtd_pre_filtro": qtd_pre_filtro, "tampa": tampa, "conexoes": conexoes,
-                            "nivel_estatico": nivel_estatico, "nivel_dinamico": nivel_dinamico,
-                            "prof_bomba": prof_bomba, "modelo_bomba": modelo_bomba, "vazao": vazao,
-                            "fendas": fendas, "coordenadas": coordenadas, "diam_rocha": diam_rocha,
-                            "diam_solo": diam_solo, "tipo_solo": tipo_solo, "obs": obs
+                            "cliente": cl, "telefone": tel, "endereco_poco": end_poco, "cidade": ci,
+                            "data_elaboracao": data_elab, "metodo_perfuracao": metodo_perf, "profundidade_poco": prof_poco,
+                            "perfuracao_solo_metros": perf_solo_mt, "tipo_revestimento": tipo_revest, "quantidade_revestimento": qtd_revest,
+                            "tubo_retirada_agua_qtde": tubo_retirada, "tipo_cabo_qtde": tipo_cabo, "tipo_filtro": tipo_filtro,
+                            "quantos_metros_filtro": metros_filtro, "tipo_pre_filtro": tipo_pre_filtro, "fez_cimentacao": fez_cimentacao,
+                            "fez_laje_protecao": fez_laje, "quantidade_pre_filtro_brita": qtd_pre_filtro, "tampa": tampa,
+                            "conexoes_utilizadas": conexoes, "nivel_estatico": nivel_estatico, "nivel_dinamico": nivel_dinamico,
+                            "profundidade_bomba": prof_bomba, "modelo_bomba": mod_bomba, "vazao": vazao, "fendas_agua": fendas_agua,
+                            "coordenadas": coordenadas, "diametro_perf_rocha_mm": diam_rocha, "diametro_perf_solo_mm": diam_solo,
+                            "solo_argiloso_arenoso": tipo_solo, "metragem": mt, "material": mat, "funcionarios": fun,
+                            "obs_tecnica": obs_tecnica
                         }) 
                         
-                        nome_poco_vinculo = f"{cliente}"
+                        nome_poco_vinculo = f"{cl} ({ci})" if (cl or ci) else "Geral / Sem Poço Específico"
                         
                         if foto_capturada is not None:
                             bytes_foto = foto_capturada.getvalue()
                             encoded_foto = base64.b64encode(bytes_foto).decode('utf-8')
                             data_uri_foto = f"data:image/jpeg;base64,{encoded_foto}"
-                            st.session_state.dados[t_ativa]["midias"].append({"data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), "caminho": data_uri_foto, "tipo": "image/jpeg", "poco": nome_poco_vinculo})
+                            
+                            st.session_state.dados[t_ativa]["midias"].append({
+                                "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), 
+                                "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
+                                "caminho": data_uri_foto, "tipo": "image/jpeg", "poco": nome_poco_vinculo
+                            })
                             st.session_state.foto_key += 1
 
                         if video_gravado is not None:
                             bytes_video = video_gravado.getvalue()
                             encoded_video = base64.b64encode(bytes_video).decode('utf-8')
                             data_uri_video = f"data:{video_gravado.type};base64,{encoded_video}"
-                            st.session_state.dados[t_ativa]["midias"].append({"data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"), "caminho": data_uri_video, "tipo": video_gravado.type, "poco": nome_poco_vinculo})
+                            
+                            st.session_state.dados[t_ativa]["midias"].append({
+                                "data": datetime.now(FUSO_BRASILIA).strftime("%d/%m/%Y %H:%M"), 
+                                "ano_mes": datetime.now(FUSO_BRASILIA).strftime("%Y-%m"),
+                                "caminho": data_uri_video, "tipo": video_gravado.type, "poco": nome_poco_vinculo
+                            })
                             st.session_state.video_key += 1
 
                         salvar_dados(st.session_state.dados)
                         st.session_state.msg_sucesso = "✅ Relatório e mídias salvos com sucesso!"
                         st.rerun()
 
-                st.markdown("""<iframe src="about:blank" style="display:none;" onload="const doc = window.parent.document; const aplicarFiltrosCamera = () => { const inputs = doc.querySelectorAll('input[type=\"file\"]'); inputs.forEach(input => { if (input.accept.includes('mp4') || input.accept.includes('video') || input.accept.includes('jpg')) { input.setAttribute('capture', 'environment'); } }); }; setInterval(aplicarFiltrosCamera, 800);"></iframe>""", unsafe_allow_html=True)
+                st.markdown("""
+                    <iframe src="about:blank" style="display:none;" onload="
+                        const doc = window.parent.document;
+                        const aplicarFiltrosCamera = () => {
+                            const inputs = doc.querySelectorAll('input[type=\"file\"]');
+                            inputs.forEach(input => {
+                                if (input.accept.includes('mp4') || input.accept.includes('video') || input.accept.includes('jpg')) {
+                                    input.setAttribute('capture', 'environment');
+                                }
+                            });
+                        };
+                        setInterval(aplicarFiltrosCamera, 800);
+                    "></iframe>
+                """, unsafe_allow_html=True)
 
         with aba2: 
             st.subheader("📅 Histórico Mensal") 
@@ -511,7 +660,7 @@ else:
                         if dias_pdf_sel:
                             t_filtrado_pdf = [t for t in t_mes if t.get('data', '')[:5] in dias_pdf_sel]
                             linhas_pdf_fin = [f"{t['data']} | {t['categoria']}: R${t['valor']:.2f}" for t in t_filtrado_pdf]
-                            pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa}", linhas_pdf_fin)
+                            pdf_financeiro = exportar_para_pdf(f"Relatorio Financeiro - {t_ativa}", lines_pdf_fin)
                             st.download_button("📥 Baixar Relatório Financeiro (PDF)", pdf_financeiro, f"financeiro_{t_ativa}_{mes_sel}.pdf", "application/pdf") 
                         else:
                             st.warning("Selecione pelo menos um dia para gerar o relatório PDF.")
@@ -527,9 +676,133 @@ else:
                 with sub_p: 
                     p_mes = [p for p in pocos if p.get("ano_mes") == mes_sel] 
                     if p_mes: 
-                        sel_poco = st.selectbox("Escolha o poço para analisar/baixar:", [f"{p['data_registro']} - {p['cliente']}" for p in p_mes], key="sel_poco_turma") 
-                        p_baixar = next(p for p in p_mes if f"{p['data_registro']} - {p['cliente']}" == sel_poco) 
-                        st.write(p_baixar)
+                        sel_poco = st.selectbox("Escolha o poço para analisar/baixar:", [f"{p.get('data', 'Sem Data')} - {p.get('cliente', 'Sem Nome')}" for p in p_mes], key="sel_poco_turma") 
+                        p_baixar = next(p for p in p_mes if f"{p.get('data', 'Sem Data')} - {p.get('cliente', 'Sem Nome')}" == sel_poco) 
+                        
+                        st.markdown(f"""
+                        <div style='background-color: #1e293b; padding: 15px; border-radius: 8px; border-left: 5px solid #0047AB; margin-bottom: 15px;'>
+                            <h4 style='margin-top:0;'>📋 Dados Atuais do Relatório</h4>
+                            <b>📍 Cliente:</b> {p_baixar.get('cliente', '')}<br>
+                            <b>📞 Telefone:</b> {p_baixar.get('telefone', '')}<br>
+                            <b>🏠 Endereço do Poço:</b> {p_baixar.get('endereco_poco', '')}<br>
+                            <b>🏙️ Cidade:</b> {p_baixar.get('cidade', '')}<br>
+                            <b>📅 Data da Elaboração:</b> {p_baixar.get('data_elaboracao', '')}<br>
+                            <b>⚙️ Método de Perfuração:</b> {p_baixar.get('metodo_perfuracao', '')}<br>
+                            <b>📏 Profundidade do Poço:</b> {p_baixar.get('profundidade_poco', '')}<br>
+                            <b>🌱 Perfuração em Solo (Metros):</b> {p_baixar.get('perfuracao_solo_metros', '')}<br>
+                            <b>🛡️ Tipo de Revestimento:</b> {p_baixar.get('tipo_revestimento', '')}<br>
+                            <b>📦 Quantidade de Revestimento:</b> {p_baixar.get('quantidade_revestimento', '')}<br>
+                            <b>🚰 Tubo de Retirada de Água e Qtd (MT):</b> {p_baixar.get('tubo_retirada_agua_qtde', '')}<br>
+                            <b>🔌 Tipo de Cabo e Qtd (MT):</b> {p_baixar.get('tipo_cabo_qtde', '')}<br>
+                            <b>🧹 Tipo de Filtro:</b> {p_baixar.get('tipo_filtro', '')}<br>
+                            <b>📏 Metros de Filtro:</b> {p_baixar.get('quantos_metros_filtro', '')}<br>
+                            <b>⏳ Tipo de Pré Filtro:</b> {p_baixar.get('tipo_pre_filtro', '')}<br>
+                            <b>🧱 Cimentação do Espaço Anelar?:</b> {p_baixar.get('fez_cimentacao', '')}<br>
+                            <b>🧰 Laje de Proteção Sanitária?:</b> {p_baixar.get('fez_laje_protecao', '')}<br>
+                            <b>🪨 Qtd de Pré Filtro (Brita):</b> {p_baixar.get('quantidade_pre_filtro_brita', '')}<br>
+                            <b>🔒 Tampa:</b> {p_baixar.get('tampa', '')}<br>
+                            <b>🔗 Conexões Utilizadas:</b> {p_baixar.get('conexoes_utilizadas', '')}<br>
+                            <b>💧 Nível Estático:</b> {p_baixar.get('nivel_estatico', '')}<br>
+                            <b>🌊 Nível Dinâmico:</b> {p_baixar.get('nivel_dinamico', '')}<br>
+                            <b>📉 Profundidade da Bomba:</b> {p_baixar.get('profundidade_bomba', '')}<br>
+                            <b>🚀 Modelo da Bomba:</b> {p_baixar.get('modelo_bomba', '')}<br>
+                            <b>💨 Vazão:</b> {p_baixar.get('vazao', '')}<br>
+                            <b>⚡ Fendas de Água:</b> {p_baixar.get('fendas_agua', '')}<br>
+                            <b>🌐 Coordenadas:</b> {p_baixar.get('coordenadas', '')}<br>
+                            <b>💎 Diâmetro Perf. em Rocha (MM):</b> {p_baixar.get('diametro_perf_rocha_mm', '')}<br>
+                            <b>🪵 Diâmetro Perf. em Solo (MM):</b> {p_baixar.get('diametro_perf_solo_mm', '')}<br>
+                            <b>⏳ Solo Argiloso ou Arenoso:</b> {p_baixar.get('solo_argiloso_arenoso', '')}<br>
+                            <b>📏 Metragem Perfurada:</b> {p_baixar.get('metragem', '')} metros<br>
+                            <b>👥 Funcionários na Obra:</b> {p_baixar.get('funcionarios', '')}<br>
+                            <b>🧱 Materiais Utilizados:</b><br>{p_baixar.get('material', '')}<br>
+                            <b>🛠️ Obs. Técnica:</b> {p_baixar.get('obs_tecnica', 'Nenhuma')}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        if st.checkbox("✏️ Editar este Relatório", key="edit_mode_turma"):
+                            with st.form("form_editar_poco_turma"):
+                                novo_cl = st.text_input("Cliente", value=p_baixar.get('cliente', ''))
+                                novo_tel = st.text_input("Telefone", value=p_baixar.get('telefone', ''))
+                                novo_end_poco = st.text_input("Endereço do Poço", value=p_baixar.get('endereco_poco', ''))
+                                novo_ci = st.text_input("Cidade", value=p_baixar.get('cidade', ''))
+                                novo_data_elab = st.text_input("Data da Elaboração", value=p_baixar.get('data_elaboracao', ''))
+                                novo_metodo_perf = st.text_input("Método de Perfuração", value=p_baixar.get('metodo_perfuracao', ''))
+                                novo_prof_poco = st.text_input("Profundidade do Poço", value=p_baixar.get('profundidade_poco', ''))
+                                novo_perf_solo_mt = st.text_input('Perfuração em Solo "Quantos Metros"', value=p_baixar.get('perfuracao_solo_metros', ''))
+                                novo_tipo_revest = st.text_input("Tipo de Revestimento", value=p_baixar.get('tipo_revestimento', ''))
+                                novo_qtd_revest = st.text_input("Quantidade de Revestimento", value=p_baixar.get('quantidade_revestimento', ''))
+                                novo_tubo_retirada = st.text_input("Tubo de Retirada de Água e Qtde. (MT)", value=p_baixar.get('tubo_retirada_agua_qtde', ''))
+                                novo_tipo_cabo = st.text_input("Tipo de Cabo e Qtde. (MT)", value=p_baixar.get('tipo_cabo_qtde', ''))
+                                novo_tipo_filtro = st.text_input("Tipo de Filtro", value=p_baixar.get('tipo_filtro', ''))
+                                novo_metros_filtro = st.text_input("Quantos Metros de Filtro", value=p_baixar.get('quantos_metros_filtro', ''))
+                                novo_tipo_pre_filtro = st.text_input("Tipo de Pré Filtro", value=p_baixar.get('tipo_pre_filtro', ''))
+                                
+                                opcoes_cimentacao = ["Sim", "Não"]
+                                idx_cim = opcoes_cimentacao.index(p_baixar.get('fez_cimentacao', 'Sim')) if p_baixar.get('fez_cimentacao', 'Sim') in opcoes_cimentacao else 0
+                                novo_fez_cimentacao = st.selectbox("Fez Cimentação do Espaço Anelar?", opcoes_cimentacao, index=idx_cim)
+                                
+                                opcoes_laje = ["Sim", "Não"]
+                                idx_laj = opcoes_laje.index(p_baixar.get('fez_laje_protecao', 'Sim')) if p_baixar.get('fez_laje_protecao', 'Sim') in opcoes_laje else 0
+                                novo_fez_laje = st.selectbox("Fez Laje de Proteção Sanitária?", opcoes_laje, index=idx_laj)
+                                
+                                novo_qtd_pre_filtro = st.text_input("Quantidade de Pré Filtro? (Brita)", value=p_baixar.get('quantidade_pre_filtro_brita', ''))
+                                novo_tampa = st.text_input("Tampa", value=p_baixar.get('tampa', ''))
+                                novo_conexoes = st.text_area("Conexões Utilizadas", value=p_baixar.get('conexoes_utilizadas', ''))
+                                novo_nivel_estatico = st.text_input("Nível Estático", value=p_baixar.get('nivel_estatico', ''))
+                                novo_nivel_dinamico = st.text_input("Nível Dinâmico", value=p_baixar.get('nivel_dinamico', ''))
+                                novo_prof_bomba = st.text_input("Profundidade da Bomba", value=p_baixar.get('profundidade_bomba', ''))
+                                novo_mod_bomba = st.text_input("Modelo da Bomba", value=p_baixar.get('modelo_bomba', ''))
+                                novo_vazao = st.text_input("Vazão", value=p_baixar.get('vazao', ''))
+                                novo_fendas_agua = st.text_input("Fendas de Água", value=p_baixar.get('fendas_agua', ''))
+                                novo_coordenadas = st.text_input("Coordenadas", value=p_baixar.get('coordenadas', ''))
+                                novo_diam_rocha = st.text_input("Diâmetro Perf. em Rocha e MM", value=p_baixar.get('diametro_perf_rocha_mm', ''))
+                                novo_diam_solo = st.text_input("Diâmetro Perf. em Solo e MM", value=p_baixar.get('diametro_perf_solo_mm', ''))
+                                
+                                opcoes_solo = ["Argiloso", "Arenoso", "Misto", "Outro"]
+                                idx_solo = opcoes_solo.index(p_baixar.get('solo_argiloso_arenoso', 'Argiloso')) if p_baixar.get('solo_argiloso_arenoso', 'Argiloso') in opcoes_solo else 0
+                                novo_tipo_solo = st.selectbox("Solo Argiloso ou Arenoso", opcoes_solo, index=idx_solo)
+                                
+                                novo_mt = st.text_input("Metragem", value=p_baixar.get('metragem', ''))
+                                novo_fun = st.text_input("Funcionários", value=p_baixar.get('funcionarios', ''))
+                                novo_mat = st.text_area("Material", value=p_baixar.get('material', ''))
+                                novo_obs = st.text_area("Observações Técnicas", value=p_baixar.get('obs_tecnica', ''))
+                                
+                                if st.form_submit_button("💾 Salvar Alterações"):
+                                    idx_original = next(i for i, p in enumerate(st.session_state.dados[t_ativa]["pocos"]) if id(p) == id(p_baixar))
+                                    st.session_state.dados[t_ativa]["pocos"][idx_original].update({
+                                        "cliente": novo_cl, "telefone": novo_tel, "endereco_poco": novo_end_poco, "cidade": novo_ci,
+                                        "data_elaboracao": novo_data_elab, "metodo_perfuracao": novo_metodo_perf, "profundidade_poco": novo_prof_poco,
+                                        "perfuracao_solo_metros": novo_perf_solo_mt, "tipo_revestimento": novo_tipo_revest, "quantidade_revestimento": novo_qtd_revest,
+                                        "tubo_retirada_agua_qtde": novo_tubo_retirada, "tipo_cabo_qtde": novo_tipo_cabo, "tipo_filtro": novo_tipo_filtro,
+                                        "quantos_metros_filtro": novo_metros_filtro, "tipo_pre_filtro": novo_tipo_pre_filtro, "fez_cimentacao": novo_fez_cimentacao,
+                                        "fez_laje_protecao": novo_fez_laje, "quantidade_pre_filtro_brita": novo_qtd_pre_filtro, "tampa": novo_tampa,
+                                        "conexoes_utilizadas": novo_conexoes, "nivel_estatico": novo_nivel_estatico, "nivel_dinamico": novo_nivel_dinamico,
+                                        "profundidade_bomba": novo_prof_bomba, "modelo_bomba": novo_mod_bomba, "vazao": novo_vazao, "fendas_agua": novo_fendas_agua,
+                                        "coordenadas": novo_coordenadas, "diametro_perf_rocha_mm": novo_diam_rocha, "diametro_perf_solo_mm": novo_diam_solo,
+                                        "solo_argiloso_arenoso": novo_tipo_solo, "metragem": novo_mt, "material": novo_mat, "funcionarios": novo_fun, 
+                                        "obs_tecnica": novo_obs
+                                    })
+                                    salvar_dados(st.session_state.dados)
+                                    st.success("Relatório corrigido com sucesso!")
+                                    st.rerun()
+                        
+                        linhas_pdf_poco = [
+                            f"Data de Registro: {p_baixar.get('data', '')}",
+                            f"Cliente: {p_baixar.get('cliente', '')}", f"Telefone: {p_baixar.get('telefone', '')}", f"Endereço do Poço: {p_baixar.get('endereco_poco', '')}", f"Cidade: {p_baixar.get('cidade', '')}",
+                            f"Data da Elaboração: {p_baixar.get('data_elaboracao', '')}", f"Método de Perfuração: {p_baixar.get('metodo_perfuracao', '')}", f"Profundidade do Poço: {p_baixar.get('profundidade_poco', '')}",
+                            f"Perfuração em Solo (m): {p_baixar.get('perfuracao_solo_metros', '')}", f"Tipo de Revestimento: {p_baixar.get('tipo_revestimento', '')}", f"Quantidade de Revestimento: {p_baixar.get('quantidade_revestimento', '')}",
+                            f"Tubo Retirada e Qtd: {p_baixar.get('tubo_retirada_agua_qtde', '')}", f"Tipo de Cabo e Qtd (m): {p_baixar.get('tipo_cabo_qtde', '')}", f"Tipo de Filtro: {p_baixar.get('tipo_filtro', '')}",
+                            f"Metros de Filtro: {p_baixar.get('quantos_metros_filtro', '')}", f"Tipo de Pré Filtro: {p_baixar.get('tipo_pre_filtro', '')}", f"Fez Cimentação?: {p_baixar.get('fez_cimentacao', '')}",
+                            f"Fez Laje Proteção?: {p_baixar.get('fez_laje_protecao', '')}", f"Qtd Pré Filtro (Brita): {p_baixar.get('quantidade_pre_filtro_brita', '')}", f"Tampa: {p_baixar.get('tampa', '')}",
+                            f"Conexões Utilizadas: {p_baixar.get('conexoes_utilizadas', '')}", f"Nível Estático: {p_baixar.get('nivel_estatico', '')}", f"Nível Dinâmico: {p_baixar.get('nivel_dinamico', '')}",
+                            f"Profundidade da Bomba: {p_baixar.get('profundidade_bomba', '')}", f"Modelo da Bomba: {p_baixar.get('modelo_bomba', '')}", f"Vazão: {p_baixar.get('vazao', '')}",
+                            f"Fendas de Água: {p_baixar.get('fendas_agua', '')}", f"Coordenadas: {p_baixar.get('coordenadas', '')}", f"Diâmetro Perf. Rocha (mm): {p_baixar.get('diametro_perf_rocha_mm', '')}",
+                            f"Diâmetro Perf. Solo (mm): {p_baixar.get('diametro_perf_solo_mm', '')}", f"Solo Argiloso/Arenoso: {p_baixar.get('solo_argiloso_arenoso', '')}",
+                            f"Metragem Perfurada: {p_baixar.get('metragem', '')} metros", f"Funcionarios na Obra: {p_baixar.get('funcionarios', '')}", 
+                            f"Materiais Utilizados: {p_baixar.get('material', '')}", f"Obs. Técnica: {p_baixar.get('obs_tecnica', '')}"
+                        ]
+                        pdf_poco = exportar_para_pdf(f"Relatorio de Poco - {p_baixar.get('cliente', 'Sem Nome')}", linhas_pdf_poco)
+                        st.download_button("📥 Baixar este Poço (PDF)", pdf_poco, f"poco_{p_baixar.get('cliente', 'SemNome')}_{p_baixar.get('data', '').replace('/','-')}.pdf", "application/pdf") 
                     else: 
                         st.caption("Nenhum poço encontrado.")
                 
